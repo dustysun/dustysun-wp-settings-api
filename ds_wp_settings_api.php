@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.0.3
+// Version 2.0.6
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -518,7 +518,6 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 
 			// first fill our options array with all default values
 			foreach($ds_default_settings_fields['fields'] as $ds_default_setting_field){
-
 				// assign the default value to the array if it exists otherwise assign blank
 				if(isset($ds_default_setting_field['value']) && !empty($ds_default_setting_field['value'])) {
 					$ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = $ds_default_setting_field['value'];
@@ -526,6 +525,8 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 					if($ds_default_setting_field['type'] == 'color_picker') {
 						// set the default color picker to black
 						$ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = '#000000';
+					} else if($ds_default_setting_field['type'] == 'protected') {
+					$ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = 'protected_must_decrypt';
 					} else {
 						$ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = '';
 					}
@@ -536,6 +537,7 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 					$ds_random_string = $this->ds_wp_settings_api_random_string();
 					$ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = $ds_random_string;
 				}
+
 			} // end foreach
 
 			// delete existing options if that flag is set
@@ -555,7 +557,13 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 			// replace the values in the array with values from the db
 			if(is_array($ds_db_settings_fields)){
 				foreach($ds_db_settings_fields as $ds_db_setting_field_key => $ds_db_setting_field) {
-					$ds_wp_settings_values[$ds_settings_option_name][$ds_db_setting_field_key] = $ds_db_setting_field;
+					// $this->wl($ds_wp_settings_values);
+					// if($ds_wp_settings_values[$ds_settings_option_name][$ds_db_setting_field_key] == 'protected_must_decrypt') {
+					// 	$this->wl('decrypt');
+					// } else {
+						$ds_wp_settings_values[$ds_settings_option_name][$ds_db_setting_field_key] = $ds_db_setting_field;
+
+					// }
 				} // end foreach
 			}// end if
 
@@ -623,7 +631,7 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 
 	} // end function encrypt_data
 
-	public function decrypt_data($encoded_input, $password = null) {
+	public static function decrypt_data($encoded_input, $password = null) {
 		// if the unique ID isn't set for whatever reason use the unique ID in our settings
 		if(!$password){
 
@@ -765,6 +773,7 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 		$settings = $args['fields'];
 		$option_name = $args['option_name'];
 		$option_class = isset($settings['class']) ? $settings['class'] : '';
+
 		// defaults
 		$ds_input_class = '';
 
@@ -822,11 +831,15 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 		} // end else if($settings['type'] == 'number')
 
 		else if($settings['type'] == 'protected')  {
-			echo '<input type="password" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ $ds_input_class . ' ' . $option_class .'" />';
+			echo '<input type="password" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class .'" />';
+
+			echo settings_errors($settings['id']);
+		}
+		else if($settings['type'] == 'password')  {
+			echo '<input type="password" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class .'" />';
 
 			echo settings_errors($settings['id']);
 		} // end
-
 		else if($settings['type'] == 'hidden')  {
 
 			echo '<input type="hidden" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ds-wp-api-hidden ' . $ds_input_class .'" />';
@@ -1043,6 +1056,16 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 			$this->create_settings_error($field_id, $label, 'This must be a hex color value such as #000000.');
 		}
 	} // end function validate_color_picker
+
+	public function validate_protected($input) {
+
+		//first clean it
+		$cleaned_input = sanitize_text_field($input);
+
+		$encrypted_input = $this->encrypt_data($cleaned_input);
+		return $encrypted_input;
+
+	} //end function validate_protected
 
 	public function validate_array($input, $field_id, $label) {
 		if(is_array($input)){

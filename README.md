@@ -324,6 +324,13 @@ PHP files accessed in the Views directory run within the setings api class. You 
 
 
 ### Changelog
+#### v2.0.6 - 2020-12-03 
+* Fixed the spacing of select drop downs.
+
+#### v2.0.4 - 2019-08-20
+* Added incomplete functions to decrypt data.
+* Added password field type.
+
 #### v2.0.3 - 2019-02-28
 * Fixed error with info/view pages not showing for option tabs.
 * Added the "tab_order" field - you can now sort the order that the tabs appear by using this optional field. Use an integer to sort.
