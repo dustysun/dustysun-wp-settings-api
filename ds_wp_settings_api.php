@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.0.6
+// Version 2.0.7
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -170,7 +170,11 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 			$this->main_settings['info'] = $this->ds_wp_settings_api_full_config['main_settings']['info'];
 			
 			// Get the views for any option/field tabs
-			$this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'] ;
+			if(isset($this->ds_wp_settings_api_full_config['options'])) {
+				$this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'] ;
+			} else {
+				$this->ds_wp_settings_option_fields = false;
+			}
 
 			// Get the views for any about section tabs
 			// see if there are about sections 
@@ -852,6 +856,7 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 
 			echo '<div class="ds-checkbox">';
 			foreach ($settings['options'] as $option_value => $option_text) {
+				echo '<div class="ds-checkbox-inner">';
 				$checked = ' ';
 				if(is_array($ds_input_setting_option) && in_array($option_value, $ds_input_setting_option)){
 					$checked = ' checked="checked" ';
@@ -867,6 +872,7 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 				}
 				echo '<input type="checkbox" name="' . $option_name . '[' . $settings['id'] . '][]" id="' . $settings['id'] . '_' . $option_value . '" class="' .  $option_class . '" value="' . $option_value . '" ' . $checked . '/>';
 				echo '<label for="' . $settings['id'] . '_' . $option_value . '">' . $option_text . '</label>&nbsp;';
+				echo '</div>';
 			}
 			echo '</div>';
 		} // else if($settings['type'] == 'checkbox')
