@@ -639,9 +639,9 @@ if(!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder'))  { class Settin
 		// if the unique ID isn't set for whatever reason use the unique ID in our settings
 		if(!$password){
 
-			if(isset($this->main_settings['unique_id']) && $this->main_settings['unique_id'] != '') {
+			if(isset(self::main_settings['unique_id']) && self::main_settings['unique_id'] != '') {
 				// use the unique ID that was added when the item was created
-				$password = $this->main_settings['unique_id'];
+				$password = self::main_settings['unique_id'];
 			} else {
 				$password = 'testing_purposes_only';
 			}
