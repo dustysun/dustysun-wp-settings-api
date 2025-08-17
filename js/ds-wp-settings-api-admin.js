@@ -100,6 +100,14 @@ jQuery(function($) {
       $(cloned_input).find("input").val('');
     });
     
+    /* Select2 */
+    if ($.fn.select2) {
+      $('.ds-post-select--select2').select2({
+        width: '100%',
+        allowClear: true,
+        placeholder: function(){ return $(this).data('placeholder') || ''; }
+      });
+    }
   }); //end $(document).ready(function()
 
 

@@ -1,369 +1,335 @@
-#Dusty Sun WP Settings API
-A class to include in your WordPress plugin to make it easy to add fields and settings.
+# Dusty Sun WP Settings API (v2)
 
-Features
---------
-* **Builds a complete plugin panel or just the fields.**    
+A small, JSON-driven helper for building WordPress settings pages quickly. Register sections/fields, render a complete tabbed admin panel, or just output fields inside your own markup.
 
-  Can use one of the functions to build a completed plugin panel, with tabs, if you choose. If you don't want a complete plugin panel, there's a function to just build the fields so you can put your own HTML wrapper around the fields.
+**Namespace:** `DustySun\WP_Settings_API\v2`  
+**Primary class:** `SettingsBuilder`  
+**Current file version:** `2.0.9`
 
-* **Easy to set up.**
+---
 
-  Simply fill out the options in the JSON file and include this in your plugin. An example JSON file is included.
+## Features
 
-Getting Started
----------------
+- **Build a complete panel or only fields**  
+  Use `build_settings_panel()` for a full, tabbed UI, or just register + render fields inside your own HTML.
 
-### Adding the class to your theme
+- **JSON-first config**  
+  Define sections, tabs, and fields in one JSON file. Optional PHP “views” let you drop in richer content per tab.
 
-Require the file:
-```
-require( dirname( __FILE__ ) . '/lib/ds_wp_settings_api.php');
-```
-Create the class and pass the JSON file:
-```
-$ds_example_json_file = plugin_dir_path( __FILE__ ) . '/ds-example-options.json';
+- **Per-field sanitization & validation**  
+  Numbers, colors, arrays, protected (encrypted) fields, etc., with errors surfaced via `add_settings_error()`.
 
-$ds_example_settings_obj = new DustySun_WP_Settings_API(($ds_example_json_file), true);
-```
-True means the options page is built. False will not build the options page - use this elsewhere in your plugin.
+- **Post selector (new in 2.0.8)**  
+  `type: "post_select"` to pick posts/CPTs (sorted by title by default, supports multi-select, IDs in label, and Select2).
 
-## Notes
+- **Version auto-detection (new in 2.0.8)**  
+  Pass your main plugin file and/or explicit version when constructing; the library fills `main_settings.version` for you if the JSON omits it.
 
-If you create the class with the second option set to true, it will run the logic to create the options pages. If this second parameter is missing or false, the options will not be built. However, the current_settings function will be available.
+- **Select2 support (bundled in admin)**  
+  Select2 assets (4.1.0) are registered/enqueued on your settings page so `post_select` can be searchable.
 
-Why the difference? Well on your admin pages you'll definitely want to create this object with the parameter set to true so your options will be built.
+- **Safe reset endpoint (admin-only)**  
+  The AJAX reset action is registered only when `register_settings` is `true` and in the admin.
 
-For the user-facing code in your plugin, you can create this object with the parameter set to false. This will read in any default values and pull any required ones from the DB. They will then be available to your plugin via the current_settings function.
+---
 
-For example you could do this in your plugin:
+## Installation
 
-```
-$ds_example_current_settings = $ds_example_settings_obj->current_settings();
-```
-### Instantiation
+1. Drop the library into your plugin or theme (e.g. `lib/dustysun-wp-settings-api/`).
+2. Require the file from your code.
+3. Create a JSON config file that describes your settings.
+4. *(Optional)* Add PHP view files per tab in a `views/` directory.
 
-Example:
-```
-$my_api_settings = array(
-  'json_file' => plugin_dir_path( __FILE__ ) . '/plugin-options.json',
-  'register_settings' => true
-);
-
-$my_settings_page = new My_DustySun_WP_Settings_API($my_api_settings);
+```php
+require_once plugin_dir_path(__FILE__) . 'lib/dustysun-wp-settings-api/ds_wp_settings_api.php';
 ```
 
+---
 
-### Available Functions
+## Usage
 
-#### get_reset_ajax_form
-Call this function in a PHP file to output an AJAX form that can be used to remove all settings from the db for the plugin.
+### Instantiate for runtime (no admin UI)
 
-#### read_json_file
-Pass a file name while building the class or put a file with the .json extension in the same directory as the settings api php file. It must have the same name as the PHP file but with the .json extension.
+```php
+use DustySun\WP_Settings_API\v2 as DSWP;
 
-JSON General Options
-------------
-# Fields - main_settings (old plugin_settings)
-You can also add additional keys here should you choose, and they will be available
+$settings = new DSWP\SettingsBuilder([
+  'json_file'        => plugin_dir_path(__FILE__) . 'my-plugin-settings.json',
+  'plugin_file'      => __FILE__,     // lets the library read your plugin header
+  // 'plugin_version' => '1.2.3',     // optional fast path if you already have it
+  'register_settings'=> false         // don't build admin UI here
+]);
 
-## text_domain
-Old: plugin_domain
+$current = $settings->get_current_settings(); // merged defaults + DB
+$main    = $settings->get_main_settings();    // main_settings (+ info/unique_id)
+```
 
-Some of your plugin or theme options are stored under this key along with the suffix \_item_settings. Also used for language Settings
+### Instantiate for admin (with UI)
 
-## tabs
-Whether or not to show the various options fields as separate tabs or all on one page.
+```php
+if (is_admin()) {
+  $settings_page = new DSWP\SettingsBuilder([
+    'json_file'        => plugin_dir_path(__FILE__) . 'my-plugin-settings.json',
+    'plugin_file'      => __FILE__,           // enables version auto-detection
+    'register_settings'=> true,               // build UI
+    'views_dir'        => plugin_dir_path(__FILE__) . 'admin/views'
+  ]);
 
-## options_suffix
-Optional: For each field name, this is appended to the end when the options are stored in the DB. Default is "\_options"
-
-For example, if you have a key under options called "advanced" and you set options_suffix to \_options then your options would be stored in the WordPress database under "advanced_options".
-
-## page_suffix
-For each tab in the settings page, the URL will be the name of the field plus this suffix. Default is "\_page"
-
-## author
-Author name
-
-## author_uri
-Author webpage
-
-## name
-Old: plugin_name
-Friendly name of your plugin or theme
-
-## item_uri
-Alternates: plugin_uri or theme_uri
-Homepage for your plugin or theme
-
-## support_uri
-Link to support for your plugin or theme
-
-## support_email
-Email for your plugin or theme support or queries.
-
-## page_slug
-Page slug you supplied to your plugin or theme for the page where your options appear.
-
-
-## item_slug
-Old: plugin_slug
-The slug/name of the main folder in for your plugin or theme. This should be to be set to the folder of the plugin or theme file. Page_slug will be used if not defined.
-
-
-## version
-Version needs to be updated every time.
-
-
-MORE NOTES TO COLLATE
-
-
-JSON Options
-------------
-# Fields
-
-Add a key named "fields." These fields are available:
-
-## id
-id used for the field - must be unique
-
-## label
-the label you want to appear next to the field
-
-## value
-the default value shown
-
-## type
-specify what kind of input field should be shown. Pick from the following types:
-
-### text
-standard text field
-
-unique fields (all are optional):
-* randomize - set to true if you want a randomized string to appear
-
-* required - set to true if field must be filled in
-
-#### Example of a standard text field:
-```json
-{
-  "id":"full_name",
-  "label":"Full name:",
-  "type":"text",
-  "value":"Your Name"
+  add_action('admin_menu', function () use ($settings_page) {
+    add_submenu_page(
+      'options-general.php',
+      __('My Plugin Settings', 'my_text_domain'),
+      __('My Plugin Settings', 'my_text_domain'),
+      'manage_options',
+      'my-plugin-settings',
+      function () use ($settings_page) {
+        $settings_page->build_settings_panel();
+      }
+    );
+  });
 }
 ```
 
-#### Example of a randomized field that's required:
+> It’s fine to have two instances—one “read-only” (front/global) and one admin-only that builds the UI. The library only binds the reset AJAX endpoint for the admin/UI instance.
+
+---
+
+## Constructor Options
+
+Pass an associative array when creating `SettingsBuilder`:
+
+| Key                | Type      | Required | Description |
+|--------------------|-----------|----------|-------------|
+| `json_file`        | string    | No*      | Absolute path to your JSON config. *If omitted, the library looks for a JSON file adjacent to this PHP file with the same base filename.* |
+| `plugin_file`      | string    | No       | Absolute path to your main plugin file so the library can read header data (incl. `Version`). |
+| `plugin_version`   | string    | No       | Directly supply a version (skips header reads). |
+| `register_settings`| bool      | No       | If `true`, registers settings/sections/fields and loads admin assets. |
+| `views_dir`        | string    | No       | Directory containing optional per-tab PHP view files. Defaults to `dirname(__FILE__).'/views'`. |
+
+---
+
+## JSON Schema
+
+Your JSON controls everything. Core sections:
+
+- `main_settings` — panel metadata & behavior  
+- `options` — one or more settings sections (tabs)  
+- `about_sections` — optional static tabs
+
+### `main_settings` keys
+
+| Key              | Description                                                                  |
+|------------------|------------------------------------------------------------------------------|
+| `name`           | Friendly name shown at top of the panel                                      |
+| `text_domain`    | Text domain for translations                                                 |
+| `tabs`           | `"true"` (default) for tabbed UI; `"false"` for a single page                |
+| `options_suffix` | Suffix appended to each section’s option key (default `""`)                  |
+| `page_suffix`    | Suffix used to build per-tab pages (default `"_page"`)                       |
+| `author`         | Author name                                                                  |
+| `author_uri`     | Author URL                                                                   |
+| `item_uri`       | Plugin home / docs                                                           |
+| `support_uri`    | Support URL                                                                  |
+| `support_email`  | Support email                                                                |
+| `page_slug`      | Slug for the admin page                                                      |
+| `item_slug`      | Item slug; defaults to `page_slug`                                           |
+| `version`        | **Optional** (auto-filled from host plugin if omitted)                       |
+
+> You can include extra keys; they’ll be available via `get_main_settings()`.
+
+### `options` (sections/tabs)
+
+Each section has a `title`, optional `tab_label`, and a `fields` array.
+
+### `about_sections`
+
+Optional additional tabs with static content. You can pair these with PHP view files (see **Views** below).
+
+---
+
+## Field Types
+
+Built-in `type` values:
+
+- `text` (supports `required`, `randomize`)
+- `number` (`min`, `max`, `step`, `required`)
+- `select` (`options` map)
+- `checkbox` (`options` map; stores array)
+- `radio` (`options` map)
+- `radio_on_off` (two options only)
+- `color_picker`
+- `fontawesome_picker`
+- `hidden`
+- `password` *(input type=password)*
+- `protected` *(stored encrypted)*
+- `multifield_text` *(repeating text inputs)*
+- **`post_select` (new in 2.0.8)**
+
+### `post_select` (posts/CPTs picker)
+
+- Queries posts of one or more `post_type`s.  
+- Defaults: `post_status = publish`, `orderby = title`, `order = ASC`.  
+- `multiple: true` → stores an **array of integers**; single stores an **integer**.  
+- `select2: true` → adds a class for Select2 (assets are enqueued by the library on your settings page).  
+- Labels display as `"{post_title} (ID: {id})"`.
+
+**JSON example (single select, searchable)**
+
 ```json
 {
-  "id":"webhook_key",
-  "label":"Webhook Key:",
-  "type":"text",
-  "randomize":"true",
-  "required":"true"
+  "id": "featured_post",
+  "label": "Featured Post",
+  "type": "post_select",
+  "post_type": "post",
+  "select2": true,
+  "placeholder": "Choose a post…"
 }
 ```
 
-### number
-input field allowing numbers only
-unique fields (all are optional):
-* min - minimum amount (by default this is set to 0 if you do not specify a minimum)
-* max - maximum amount
-* required - choose if field must be filled in
-* step - the step increment
+**JSON example (multi-select across CPTs)**
 
 ```json
 {
-  "id":"coupon_amount",
-  "label":"Amount:",
-  "type":"number",
-  "step":".01",
-  "min":"5",
-  "max":"100",
-  "value":"10"
+  "id": "highlighted_items",
+  "label": "Highlighted Items",
+  "type": "post_select",
+  "post_type": ["games", "web_activities"],
+  "multiple": true,
+  "select2": true,
+  "posts_per_page": -1,
+  "orderby": "title",
+  "order": "ASC",
+  "placeholder": "Start typing to search…"
 }
 ```
 
-### select
-standard drop down menu
+**Sanitization**  
+- For `post_select`: single values are saved as `absint`; multiple values are mapped to unique `absint` array.  
+- Other types use the class’ appropriate validator (text, number, color, arrays, protected).
 
-* options - specify the options in standard JSON with the option name on the left and the display name on the right, like this:
+---
 
-Example:
+## Views
 
-```json
-{
-  "id":"coupon_type",
-  "label":"Coupon Type:",
-  "type":"select",
-  "options":{
-    "fixed_cart":"Fixed Cart",
-    "fixed_product":"Fixed Product",
-    "percent":"Percent"
-    },
-  "value":"fixed_product"
-}
+Supply a `views_dir` when constructing. The library will include (if present):
+
+- `views/main_settings.php` → rendered beneath the panel title  
+- `views/{option_section_key}.php` → rendered at top of that tab  
+- `views/{about_section_key}.php` → rendered for about tabs
+
+> Files are included and captured via output buffering. Escape output appropriately.
+
+---
+
+## Admin Assets
+
+When the current screen matches your settings page, the library enqueues:
+
+- Google Fonts: **Open Sans** and **Montserrat**
+- WordPress **Color Picker** (`wp-color-picker`)
+- **Font Awesome** v5.1.1 (for icon picker)
+- Library CSS/JS (`ds-wp-settings-api-admin.css`, `ds-wp-settings-api-admin.js`)
+- **Select2** v4.1.0 CSS/JS (for `post_select` when `select2: true`)
+
+---
+
+## AJAX: Reset All Settings
+
+Use `get_reset_ajax_form()` to output a simple form that triggers a full reset (optionally deleting DB-stored values). The AJAX action is registered only when `register_settings` is `true` and in the admin:
+
 ```
-### checkbox
-creates a standard block of multi-selection checkboxes
-```json
-{
-  "id":"shirt_sizes_available",
-  "label":"Shirt Sizes:",
-  "type":"checkbox",
-  "options":{
-    "small":"Small",
-    "medium":"Medium",
-    "large":"Large"
-    },
-  "value":"single"
-}
-```
-### radio
-creates a standard block of radio buttons
-```json
-{
-  "id":"ticket_types",
-  "label":"Choose type of ticket:",
-  "type":"radio",
-  "options":{
-    "single":"Single Pass",
-    "family":"Family Pass",
-    "season":"Season Pass"
-    },
-  "value":"single"
-}
-```
-### radio_on_off
-creates a sliding button, so you have two options
-```json
-{
-  "id":"coupon_delete_existing",
-  "label":"Delete existing coupon with same code:",
-  "type":"radio_on_off",
-  "options":{
-    "true":"On",
-    "false":"Off"
-    },
-  "value":"true"
-}
-```
-### color_picker
-creates a color picker field for choosing a hex code from a color wheel
-```json
-{
-  "id":"hover_label_bg_color",
-  "label":"Hover Label Background Color:",
-  "type":"color_picker",
-  "value":"#000"
-}
-```
-### fontawesome_picker
-allows you to choose an icon from the FontAwesome icon set (v4.7)
-```json
-{
-  "id":"error_icon",
-  "label":"Error message icon:",
-  "type":"fontawesome_picker",
-  "value":"fa-info-circle"
-}
-```
-### hidden
-creates a hidden field
-```json
-{
-  "id":"form_version",
-  "type":"hidden",
-  "value":"1.0"
-}
-```
-### protected
-creates a field with bulleted dots shown
-```json
-{
-  "id":"webhook_secret",
-  "label":"Webhook Secret:",
-  "type":"protected"
-}
+ds_wp_api_reset_settings-{item_slug}
 ```
 
-Functions
----------
+> **Security tip:** If you expose this action via a button in your own UI, wrap it with a capability check and a nonce.
 
-## get_main_settings()
+--- 
 
-Returns everything under the item_options key from the JSON file.
-Old: get_plugin_options
+## Quick Retrieval
 
-## set_main_settings()
-Sets the plugin defaults.
+1. Read-only, anywhere (no UI instance needed):
+- use DustySun\WP_Settings_API\v2\Options;
+- $val = Options::get('my_text_domain', 'my_section', 'my_field', 'default');
 
-Old: set_plugin_options
+2. From the UI/SettingsBuilder instance you already created:
+- $val = $settings_page->get_field('my_section', 'my_field', 'default');
 
-Optional fields:
-* $update_db - false by default - pass true to store values in the database
-* $reset_defaults - false by default - set to true to delete options from the database
+---
 
-## build_settings_panel
-Creates the options pages
+## Public Methods
 
-Old: build_plugin_panel
-Fields:
+- `get_main_settings()` → array of `main_settings` (plus `info`, `unique_id`)  
+- `get_current_settings()` → merged defaults + DB values per section  
+- `set_main_settings($update_db = false, $reset_defaults = false)` → seeds/updates the `{text_domain}_main_settings` option; `$reset_defaults` deletes first  
+- `build_settings_panel($title = null, $header_content = null)` → renders the full admin UI  
+- `get_reset_ajax_form()` → returns HTML for the reset form
 
-Title = title shown at top of options page
-Header Content = Pass HTML or other items to be shown beneath the title. If this is left blank, a php file in the views directory with the name main_settings will be shown.
+---
 
+## What Happens Under the Hood
 
-Views
------
-PHP files accessed in the Views directory run within the setings api class. You can access the class variable $this->main_settings
+- **JSON loading**: reads your JSON (or auto-locates a `*.json` next to the library).  
+- **Defaults & version**: merges `main_settings`; if `version` is empty, resolves from `plugin_version` or the header of `plugin_file` (via `get_plugin_data` with a `get_file_data` fallback).  
+- **Unique ID**: generates/persists `{text_domain}_uid` for encryption helper.  
+- **Admin assets**: enqueued only when the current admin screen matches your settings page hook/slug.
 
-#### Additional documentation coming soon. Please reach out if you're attempting to use this work in progress!
+---
 
+## Changelog
 
-### Changelog
-#### v2.0.6 - 2020-12-03 
-* Fixed the spacing of select drop downs.
+### 2.0.9 - 2025-08-16
+- **Host plugin version resolution**: pass `plugin_file` and/or `plugin_version`; JSON `version` now optional.
+- **New field:** `post_select` (sorted by title; supports `multiple`, `select2`, placeholders; labels include ID).
+- **Select2** (4.1.0) registered/enqueued on the settings page.
+- **Reset AJAX** is only bound for the admin/UI instance.
 
-#### v2.0.4 - 2019-08-20
-* Added incomplete functions to decrypt data.
-* Added password field type.
+### 2.0.6 — 2020-12-03
+- Fixed spacing of select dropdowns.
 
-#### v2.0.3 - 2019-02-28
-* Fixed error with info/view pages not showing for option tabs.
-* Added the "tab_order" field - you can now sort the order that the tabs appear by using this optional field. Use an integer to sort.
-* Added the ability to use toggle_ classes on fields to hide or show related fields.
-* Added anchor tab to scroll the user to the top of the tab when changing tabs.
+### 2.0.4 — 2019-08-20
+- Added password field type and incomplete decrypt functions.
 
-#### v2.0.2 - 2019-01-16
-* Added code to check for the page slug in the hook returned when loading styles to fix when a submenu page prefix changes the page hook.
+### 2.0.3 — 2019-02-28
+- Fixed info/view pages not showing for option tabs.
+- Added `tab_order`, toggle classes, and anchor tab behavior.
 
-#### v2.0.1 - 2018-09-13
-* Added ability to skip an option or about tab by adding skip: true to the JSON
+### 2.0.2 — 2019-01-16
+- Fixed page-slug checks for loading styles with submenu prefixes.
 
-#### 1.0.7 - 2018-07-11
-* Addition of the checkbox field type and validation.
-* Addition of the multifield-text box that stores everything in array.
+### 2.0.1 — 2018-09-13
+- Added ability to skip an option or about tab (`skip: true`).
 
+### 1.0.7 — 2018-07-11
+- Added `checkbox` field and `multifield_text`.
 
 #### 1.0.6 - 2018-05-21
-* Adjustments to appearance of certain elements in the CSS.
+- Adjustments to appearance of certain elements in the CSS.
 
 #### 1.0.5 - 2018-02-21
-* Changed error display for inputs - it still shows the message beneath each input that has an error but also outputs all the errors at the top of the screen.
+- Changed error display for inputs - it still shows the message beneath each input that has an error but also outputs all the errors at the top of the screen.
 
 #### 1.0.4 - 2018-02-11
-* Added function to create an Ajax form that allows a reset/deletion of all options in the database.
+- Added function to create an Ajax form that allows a reset/deletion of all options in the database.
 
 #### 1.0.3 - 2018-02-07
-* Tab pages did not have a correct URL. Added a page_slug option to the JSON file which will fill in the URL to the tabs correctly.
-* Fixed a bug where the first save of a new option array would not save because the hidden option key name was not being set in the validate function. (Actually the validate function is running twice in WP for some reason with this first save, stripping the hidden value.) Worked around this issue by making sure that value is set and if not, it pulls it from the POST data which should have it.
+- Tab pages did not have a correct URL. Added a page_slug option to the JSON file which will fill in the URL to the tabs correctly.
+- Fixed a bug where the first save of a new option array would not save because the hidden option key name was not being set in the validate function. (Actually the validate function is running twice in WP for some reason with this first save, stripping the hidden value.) Worked around this issue by making sure that value is set and if not, it pulls it from the POST data which should have it.
 
 #### 1.0.2 - 2018-02-03
-* Changed method of instantiation - now must pass an array containing 'json_file' with a path to the json file and 'register_settings' set to true or false. If any of these items are not passed the plugin will not register settings and will look for a JSON file in the same directory as the php file to load.
+- Changed method of instantiation - now must pass an array containing 'json_file' with a path to the json file and 'register_settings' set to true or false. If any of these items are not passed the plugin will not register settings and will look for a JSON file in the same directory as the php file to load.
 
 #### 1.0.1 - 2018-01-27
-* Fixed an issue with the settings library to allow having hidden options.
-* Fixed issue with the current settings function being called too many times.
+- Fixed an issue with the settings library to allow having hidden options.
+- Fixed issue with the current settings function being called too many times.
+
+---
+
+## License
+
+GPLv2 (or later).
+
+---
+
+## Links
+
+- GitHub: https://github.com/srtalley/dustysun-wp-settings-api  
+- Author: Steve Talley — https://dustysun.com/
