@@ -275,6 +275,8 @@ ds_wp_api_reset_settings-{item_slug}
 ---
 
 ## Changelog
+### 2.1.0 - 2025-09-09
+* Added a textarea type.
 
 ### 2.0.9 - 2025-08-16
 - **Host plugin version resolution**: pass `plugin_file` and/or `plugin_version`; JSON `version` now optional.

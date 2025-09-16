@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.0.9
+// Version 2.1.0
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -858,8 +858,20 @@ if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
                 echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class . '" />';
                 echo settings_errors($settings['id']);
             } // end if($settings['type'] == 'text')
+            else if ($settings['type'] == 'textarea') {
+                $rows = isset($settings['rows']) ? $settings['rows'] : '8';
+                $value = isset($ds_input_setting_option) ? esc_textarea($ds_input_setting_option) : '';
+    
+                echo '<textarea id="' . esc_attr($settings['id']) . '" 
+                name="' . esc_attr($option_name . '[' . $settings['id'] . ']') . '" 
+                class="ds-wp-api-input ' . esc_attr($ds_input_class . ' ' . $option_class) . '" 
+                rows="' . intval($rows) . '">'
+                            . $value .
+                    '</textarea>';
 
-            else if ($settings['type'] == 'multifield_text') {
+                // Show the error if any for this ID
+                echo settings_errors($settings['id']);
+            } else if ($settings['type'] == 'multifield_text') {
                 if (!is_array($ds_input_setting_option)) {
                     $ds_input_setting_option = array( $ds_input_setting_option);
                 } 
@@ -1086,6 +1098,13 @@ if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
                     if ($validation_type == "number") {
                         $validated_info = $this->validate_number($raw_input_data_fields[$sanitization_field['id']],
                             $sanitization_field['id'], $sanitization_field['label']);
+                    } elseif ($validation_type === 'textarea') {
+                        // Preserve line breaks, strip dangerous HTML
+                        $raw = $raw_input_data_fields[$sanitization_field['id']] ?? '';
+                        // If you want plain text only:
+                        $validated_info = sanitize_textarea_field($raw);
+                        // Or if you want to allow HTML but keep line breaks:
+                        // $validated_info = wp_kses_post( $raw );
                     } elseif ($validation_type == "multifield_text") {
                         $validated_info = $this->validate_array($raw_input_data_fields[$sanitization_field['id']], $sanitization_field['id'], $sanitization_field['label']);
                     } elseif ($validation_type == "checkbox") {
