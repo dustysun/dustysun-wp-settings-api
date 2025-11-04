@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.1.0
+// Version 2.2.0
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -10,8 +10,8 @@
 
 // Include the admin panel page
 // https://github.com/kmhcreative/icon-picker
+namespace DustySun\WP_Settings_API\v2_2;
 
-namespace DustySun\WP_Settings_API\v2;
 /* To use this library, create a new class object and pass the complete path and name of a JSON file, or place a JSON file named ds_wp_settings_api.json in the same directory as this file.
 
 You should also have a views directory in the same directory as this file, and any PHP files that have the same name as the section will be displayed on those tabs.
@@ -32,7 +32,7 @@ $ds_settings_page = new \Dusty_Sun\WP_Settings_API\v1\DustySun_WP_Settings_API($
 
 */
 
-if (!class_exists('DustySun\WP_Settings_API\v2\Bootstrap')) {
+if (!class_exists(__NAMESPACE__ . '\Bootstrap')) {
     final class Bootstrap {
         public static function from_plugin(array $args): SettingsBuilder {
             $defaults = [
@@ -46,12 +46,14 @@ if (!class_exists('DustySun\WP_Settings_API\v2\Bootstrap')) {
         }
     }
 }
-if (!class_exists('DustySun\WP_Settings_API\v2\Options')) {
+if (!class_exists(__NAMESPACE__ . '\Options')) {
     final class Options {
         /** @var array<string,array> */
         private static $cache = [];
 
         public static function main(string $text_domain): array {
+            error_log('lo     gboots api');
+
             $k = "{$text_domain}_main_settings";
             if (!isset(self::$cache[$k])) {
                 self::$cache[$k] = get_option($k, []);
@@ -78,7 +80,7 @@ if (!class_exists('DustySun\WP_Settings_API\v2\Options')) {
         }
     }
 }
-if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
+if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
     class SettingsBuilder {
         private $ds_wp_api_settings_init_data;
 
@@ -853,8 +855,12 @@ if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
                 $ds_input_class = "ds-wp-api-input-required";
                 echo '<span class="ds-wp-api-required-message">*This field is required</span>';
             }
-
+            // wl($settings['type']);
             if ($settings['type'] == 'text') {
+                echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class . '" />';
+                echo settings_errors($settings['id']);
+            }
+            if ($settings['type'] == 'url') {
                 echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class . '" />';
                 echo settings_errors($settings['id']);
             } // end if($settings['type'] == 'text')
@@ -1095,7 +1101,9 @@ if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
                     // get the validation type. If not set, send the type of field
                     $validation_type = isset($sanitization_field['validation']) && !empty($sanitization_field['validation']) ? $sanitization_field['validation'] : $sanitization_field['type'];
 
-                    if ($validation_type == "number") {
+                    if ($validation_type === 'url') {
+                        $validated_info = $this->validate_url($raw_input_data_fields[$sanitization_field['id']], $sanitization_field['id'], $sanitization_field['label']);
+                    } else if ($validation_type == "number") {
                         $validated_info = $this->validate_number($raw_input_data_fields[$sanitization_field['id']],
                             $sanitization_field['id'], $sanitization_field['label']);
                     } elseif ($validation_type === 'textarea') {
@@ -1144,6 +1152,22 @@ if (!class_exists('DustySun\WP_Settings_API\v2\SettingsBuilder')) {
         public function validate_text($input) {
             return sanitize_text_field($input);
         } // end function validate_text
+
+        public function validate_url($input, $field_id = '', $label = '') {
+            $url = esc_url_raw(trim((string) $input));
+            if ($url === '' && $input !== '') {
+                // Optional: surface a settings error if it failed validation but wasn't blank
+                $this->create_settings_error($field_id ?: 'url', $label ?: 'URL', 'is not a valid http(s) URL');
+            } else {
+                // Optional: enforce allowed schemes and (if you want) a domain allowlist
+                $parts = wp_parse_url($url);
+                if (!empty($parts['scheme']) && !in_array($parts['scheme'], ['http','https'], true)) {
+                    $this->create_settings_error($field_id ?: 'url', $label ?: 'URL', 'must use http or https');
+                    return '';
+                }
+            }
+            return $url;
+        }
 
         public function validate_number($input, $field_id, $label) {
             // check if it's numeric or just blank
