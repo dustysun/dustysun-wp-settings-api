@@ -4,7 +4,7 @@ A small, JSON-driven helper for building WordPress settings pages quickly. Regis
 
 **Namespace:** `DustySun\WP_Settings_API\v2_2`  
 **Primary class:** `SettingsBuilder`  
-**Current file version:** `2.0.9`
+**Current file version:** `2.2.0`
 
 ---
 
