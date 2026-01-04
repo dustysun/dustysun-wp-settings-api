@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.2.0
+// Version 2.2.1
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -52,8 +52,6 @@ if (!class_exists(__NAMESPACE__ . '\Options')) {
         private static $cache = [];
 
         public static function main(string $text_domain): array {
-            error_log('lo     gboots api');
-
             $k = "{$text_domain}_main_settings";
             if (!isset(self::$cache[$k])) {
                 self::$cache[$k] = get_option($k, []);
