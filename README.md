@@ -1,10 +1,10 @@
-# Dusty Sun WP Settings API (v2.2)
+# Dusty Sun WP Settings API (v2.3)
 
 A small, JSON-driven helper for building WordPress settings pages quickly. Register sections/fields, render a complete tabbed admin panel, or just output fields inside your own markup.
 
-**Namespace:** `DustySun\WP_Settings_API\v2_2`  
+**Namespace:** `DustySun\WP_Settings_API\v2_3`  
 **Primary class:** `SettingsBuilder`  
-**Current file version:** `2.2.0`
+**Current file version:** `2.3.0`
 
 ---
 
@@ -51,7 +51,7 @@ require_once plugin_dir_path(__FILE__) . 'lib/dustysun-wp-settings-api/ds_wp_set
 ### Instantiate for runtime (no admin UI)
 
 ```php
-use DustySun\WP_Settings_API\v2 as DSWP;
+use DustySun\WP_Settings_API\v2_3 as DSWP;
 
 $settings = new DSWP\SettingsBuilder([
   'json_file'        => plugin_dir_path(__FILE__) . 'my-plugin-settings.json',
@@ -275,6 +275,10 @@ ds_wp_api_reset_settings-{item_slug}
 ---
 
 ## Changelog
+### 2.3.0 - 2025-12-05
+* Refactored the way admin views are loaded to allow more custom code to work correctly.
+* Added new version 2_3.
+
 ### 2.2.1 - 2025-11-01
 * Logging cleanup.
 

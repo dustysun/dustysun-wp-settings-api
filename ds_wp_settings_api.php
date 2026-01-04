@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.2.1
+// Version 2.3.0
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -10,7 +10,7 @@
 
 // Include the admin panel page
 // https://github.com/kmhcreative/icon-picker
-namespace DustySun\WP_Settings_API\v2_2;
+namespace DustySun\WP_Settings_API\v2_3;
 
 /* To use this library, create a new class object and pass the complete path and name of a JSON file, or place a JSON file named ds_wp_settings_api.json in the same directory as this file.
 
@@ -95,6 +95,8 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
         private $ds_wp_settings_api_about_sections = array();
 
         private $ds_wp_settings_api_messages = array();
+        
+        private $views_loaded = false;
 
         // Create the object
         public function __construct($data = null) {
@@ -162,6 +164,29 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             }//end if(file_exists($file_path))
         } // end function read_json_file
 
+        protected function ensure_views_loaded() {
+            if ($this->views_loaded || !is_admin()) {
+                return;
+            }
+            $this->views_loaded = true;
+    
+            // Get the views
+            $this->ds_wp_settings_api_full_config = $this->read_stored_views($this->ds_wp_settings_api_full_config);
+    
+            // Get the views for main settings screen
+            $this->main_settings['info'] = $this->ds_wp_settings_api_full_config['main_settings']['info'];
+    
+            // Get the views for any option/field tabs
+            if (isset($this->ds_wp_settings_api_full_config['options'])) {
+                $this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'];
+            }
+    
+            // Get the views for any about section tabs
+            if (isset($this->ds_wp_settings_api_full_config['about_sections']) && $this->ds_wp_settings_api_full_config['about_sections'] != '') {
+                $this->ds_wp_settings_api_about_sections = $this->ds_wp_settings_api_full_config['about_sections'];
+            }
+        }
+
         public function set_main_settings($update_db = false, $reset_defaults = false) {
             // if $update_db is true the main settings key can optionally be stored in
             // the database. This is useful for recording this info on plugin or theme 
@@ -217,27 +242,6 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             // only do the following as admin, such as adding views that don't need to be done
             // every time the site is accessed by a regular user
             if (is_admin()) {
-                // Get the views
-                $this->ds_wp_settings_api_full_config = $this->read_stored_views( $this->ds_wp_settings_api_full_config ); 
-
-                // Get the views for main settings screen
-                $this->main_settings['info'] = $this->ds_wp_settings_api_full_config['main_settings']['info'];
-			
-                // Get the views for any option/field tabs
-                if (isset($this->ds_wp_settings_api_full_config['options'])) {
-                    $this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'] ;
-                } else {
-                    $this->ds_wp_settings_option_fields = false;
-                }
-
-                // Get the views for any about section tabs
-                // see if there are about sections 
-                if (isset($this->ds_wp_settings_api_full_config['about_sections']) && $this->ds_wp_settings_api_full_config['about_sections'] != '') {
-                    $this->ds_wp_settings_api_about_sections = $this->ds_wp_settings_api_full_config['about_sections'];
-                } else {
-                    $this->ds_wp_settings_api_about_sections = false;
-                } // end if
-
                 // Check to see if the unique ID is properly stored in the DB.
                 // if it's blank set a new id and put it in the DB
                 if ($this->main_settings['unique_id'] == '') {
@@ -401,6 +405,8 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
         // if there's a logo_file key specified with a path relative to this library it will be shown in the header bar 
 	
         public function build_settings_panel($title = null, $header_content = null) {
+            $this->ensure_views_loaded();
+
             if ($title == null) {
                 $title = $this->main_settings['name'];
             }
