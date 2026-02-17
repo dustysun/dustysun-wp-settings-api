@@ -207,7 +207,7 @@
   box-shadow:none;
 }
 /* LIST ELEMENTS */
-.ds-wp-settings-api-panel-wrap ul {
+.ds-wp-settings-api-panel-wrap ul:not(.select2-selection__rendered) {
   list-style: disc;
   margin-left: 3em;
 }
@@ -383,6 +383,10 @@
   cursor: pointer;
 }
 
+/* SELECT2 */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  margin-bottom: 0;
+}
 /* SWITCH STYLES */
 .ds-switch {
   position: relative;

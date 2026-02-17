@@ -1,4 +1,4 @@
-//v2.0.3
+//v2.3.1
 
 jQuery(function($) {
 
@@ -102,10 +102,44 @@ jQuery(function($) {
     
     /* Select2 */
     if ($.fn.select2) {
-      $('.ds-post-select--select2').select2({
+      // Standard (non-AJAX) post selects
+      $('.ds-post-select--select2').not('.ds-post-select--ajax').select2({
         width: '100%',
         allowClear: true,
         placeholder: function(){ return $(this).data('placeholder') || ''; }
+      });
+
+      // AJAX-powered post selects
+      $('.ds-post-select--ajax').each(function() {
+        var $el = $(this);
+        $el.select2({
+          width: '100%',
+          allowClear: true,
+          placeholder: $el.data('placeholder') || '',
+          minimumInputLength: 2,
+          ajax: {
+            url: dsWpSettingsApi.ajaxUrl,
+            dataType: 'json',
+            delay: 300,
+            data: function(params) {
+              return {
+                action:      dsWpSettingsApi.postSearchAction,
+                _nonce:      dsWpSettingsApi.postSearchNonce,
+                q:           params.term,
+                post_type:   $el.data('post-type') || 'post',
+                post_status: $el.data('post-status') || 'publish',
+                page:        params.page || 1
+              };
+            },
+            processResults: function(data) {
+              return {
+                results:    data.results,
+                pagination: data.pagination
+              };
+            },
+            cache: true
+          }
+        });
       });
     }
   }); //end $(document).ready(function()

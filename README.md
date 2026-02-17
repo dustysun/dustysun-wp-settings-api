@@ -4,7 +4,7 @@ A small, JSON-driven helper for building WordPress settings pages quickly. Regis
 
 **Namespace:** `DustySun\WP_Settings_API\v2_3`  
 **Primary class:** `SettingsBuilder`  
-**Current file version:** `2.3.0`
+**Current file version:** `2.3.1`
 
 ---
 
@@ -14,13 +14,13 @@ A small, JSON-driven helper for building WordPress settings pages quickly. Regis
   Use `build_settings_panel()` for a full, tabbed UI, or just register + render fields inside your own HTML.
 
 - **JSON-first config**  
-  Define sections, tabs, and fields in one JSON file. Optional PHP “views” let you drop in richer content per tab.
+  Define sections, tabs, and fields in one JSON file. Optional PHP "views" let you drop in richer content per tab.
 
 - **Per-field sanitization & validation**  
   Numbers, colors, arrays, protected (encrypted) fields, etc., with errors surfaced via `add_settings_error()`.
 
-- **Post selector (new in 2.0.8)**  
-  `type: "post_select"` to pick posts/CPTs (sorted by title by default, supports multi-select, IDs in label, and Select2).
+- **Post selector (new in 2.0.8, AJAX support in 2.3.1)**  
+  `type: "post_select"` to pick posts/CPTs (sorted by title by default, supports multi-select, IDs in label, and Select2). Optional AJAX-powered search for sites with large numbers of posts.
 
 - **Version auto-detection (new in 2.0.8)**  
   Pass your main plugin file and/or explicit version when constructing; the library fills `main_settings.version` for you if the JSON omits it.
@@ -90,7 +90,7 @@ if (is_admin()) {
 }
 ```
 
-> It’s fine to have two instances—one “read-only” (front/global) and one admin-only that builds the UI. The library only binds the reset AJAX endpoint for the admin/UI instance.
+> It's fine to have two instances—one "read-only" (front/global) and one admin-only that builds the UI. The library only binds the reset AJAX endpoint for the admin/UI instance.
 
 ---
 
@@ -123,7 +123,7 @@ Your JSON controls everything. Core sections:
 | `name`           | Friendly name shown at top of the panel                                      |
 | `text_domain`    | Text domain for translations                                                 |
 | `tabs`           | `"true"` (default) for tabbed UI; `"false"` for a single page                |
-| `options_suffix` | Suffix appended to each section’s option key (default `""`)                  |
+| `options_suffix` | Suffix appended to each section's option key (default `""`)                  |
 | `page_suffix`    | Suffix used to build per-tab pages (default `"_page"`)                       |
 | `author`         | Author name                                                                  |
 | `author_uri`     | Author URL                                                                   |
@@ -134,7 +134,7 @@ Your JSON controls everything. Core sections:
 | `item_slug`      | Item slug; defaults to `page_slug`                                           |
 | `version`        | **Optional** (auto-filled from host plugin if omitted)                       |
 
-> You can include extra keys; they’ll be available via `get_main_settings()`.
+> You can include extra keys; they'll be available via `get_main_settings()`.
 
 ### `options` (sections/tabs)
 
@@ -162,7 +162,7 @@ Built-in `type` values:
 - `password` *(input type=password)*
 - `protected` *(stored encrypted)*
 - `multifield_text` *(repeating text inputs)*
-- **`post_select` (new in 2.0.8)**
+- **`post_select` (new in 2.0.8, AJAX in 2.3.1)**
 
 ### `post_select` (posts/CPTs picker)
 
@@ -170,6 +170,7 @@ Built-in `type` values:
 - Defaults: `post_status = publish`, `orderby = title`, `order = ASC`.  
 - `multiple: true` → stores an **array of integers**; single stores an **integer**.  
 - `select2: true` → adds a class for Select2 (assets are enqueued by the library on your settings page).  
+- `ajax: true` → enables AJAX-powered search instead of pre-loading all posts. Only the already-selected posts are loaded on page render; additional results are fetched as the user types. Supports searching by post title or post ID, and includes infinite scroll pagination.  
 - Labels display as `"{post_title} (ID: {id})"`.
 
 **JSON example (single select, searchable)**
@@ -202,9 +203,40 @@ Built-in `type` values:
 }
 ```
 
+**JSON example (AJAX-powered multi-select for large post counts)**
+
+```json
+{
+  "id": "freebie_post_ids",
+  "label": "Freebie Post IDs",
+  "type": "post_select",
+  "multiple": true,
+  "select2": true,
+  "ajax": true,
+  "post_type": "post",
+  "placeholder": "Search by title or post ID…"
+}
+```
+
+> Use `ajax: true` when the number of matching posts is large (thousands+). The non-AJAX mode pre-loads all posts on page render, which is fine for smaller sets but can slow down the settings page with very large post counts. The AJAX mode fetches 20 results per request with a 2-character minimum input and a 300ms debounce delay.
+
+#### `post_select` JSON options reference
+
+| Key              | Type              | Default     | Description |
+|------------------|-------------------|-------------|-------------|
+| `post_type`      | string or array   | `"post"`    | One or more post types to query |
+| `post_status`    | string            | `"publish"` | Post status to filter by |
+| `multiple`       | bool              | `false`     | Allow selecting multiple posts |
+| `select2`        | bool              | `false`     | Enable Select2 for searchable dropdown |
+| `ajax`           | bool              | `false`     | Use AJAX search instead of pre-loading all posts |
+| `placeholder`    | string            | `""`        | Placeholder text shown in the select |
+| `posts_per_page` | int               | `-1`        | Limit pre-loaded posts (non-AJAX mode only) |
+| `orderby`        | string            | `"title"`   | Sort field (non-AJAX mode only) |
+| `order`          | string            | `"ASC"`     | Sort direction (non-AJAX mode only) |
+
 **Sanitization**  
 - For `post_select`: single values are saved as `absint`; multiple values are mapped to unique `absint` array.  
-- Other types use the class’ appropriate validator (text, number, color, arrays, protected).
+- Other types use the class' appropriate validator (text, number, color, arrays, protected).
 
 ---
 
@@ -230,6 +262,8 @@ When the current screen matches your settings page, the library enqueues:
 - Library CSS/JS (`ds-wp-settings-api-admin.css`, `ds-wp-settings-api-admin.js`)
 - **Select2** v4.1.0 CSS/JS (for `post_select` when `select2: true`)
 
+When `post_select` fields with `ajax: true` are in use, the library also localizes AJAX configuration (URL, action, and nonce) via `wp_localize_script`.
+
 ---
 
 ## AJAX: Reset All Settings
@@ -241,6 +275,16 @@ ds_wp_api_reset_settings-{item_slug}
 ```
 
 > **Security tip:** If you expose this action via a button in your own UI, wrap it with a capability check and a nonce.
+
+## AJAX: Post Search
+
+When `post_select` fields use `ajax: true`, the library registers a nonce-protected AJAX endpoint:
+
+```
+ds_wp_api_post_search-{item_slug}
+```
+
+This endpoint accepts the following parameters (via GET): `q` (search term), `post_type` (comma-separated), `post_status`, and `page` (for pagination). It returns results in Select2's expected format. Searching by numeric values performs a post ID lookup; non-numeric values search by post title.
 
 --- 
 
@@ -262,6 +306,7 @@ ds_wp_api_reset_settings-{item_slug}
 - `set_main_settings($update_db = false, $reset_defaults = false)` → seeds/updates the `{text_domain}_main_settings` option; `$reset_defaults` deletes first  
 - `build_settings_panel($title = null, $header_content = null)` → renders the full admin UI  
 - `get_reset_ajax_form()` → returns HTML for the reset form
+- `ajax_post_search()` → AJAX handler for Select2 post search (registered automatically)
 
 ---
 
@@ -275,6 +320,13 @@ ds_wp_api_reset_settings-{item_slug}
 ---
 
 ## Changelog
+
+### 2.3.1 - 2026-02-17
+* **AJAX-powered post_select**: Added `ajax: true` option for `post_select` fields. When enabled, posts are searched on demand via a nonce-protected AJAX endpoint instead of pre-loading all posts on page render. Supports searching by post title or post ID, with paginated results (20 per request).
+* **HTML entity fix**: Post titles containing special characters (em dashes, curly quotes, etc.) now display correctly in Select2 dropdowns instead of showing raw HTML entities.
+* Added `ajax_post_search()` public method and corresponding AJAX endpoint.
+* Admin JS now localizes AJAX configuration for post search via `wp_localize_script`.
+
 ### 2.3.0 - 2025-12-05
 * Refactored the way admin views are loaded to allow more custom code to work correctly.
 * Added new version 2_3.

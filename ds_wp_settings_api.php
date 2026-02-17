@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.3.0
+// Version 2.3.1
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -10,22 +10,23 @@
 
 // Include the admin panel page
 // https://github.com/kmhcreative/icon-picker
+
 namespace DustySun\WP_Settings_API\v2_3;
 
 /* To use this library, create a new class object and pass the complete path and name of a JSON file, or place a JSON file named ds_wp_settings_api.json in the same directory as this file.
 
 You should also have a views directory in the same directory as this file, and any PHP files that have the same name as the section will be displayed on those tabs.
 
-The main info shown above the tab but below the title can be defined with a file named 
+The main info shown above the tab but below the title can be defined with a file named
 "main_settings.php" while the rest of the files are named after the id of the about_sections or options sections.
 
 Example instatiation:
 $ds_api_settings = array(
-	'json_file' => plugin_dir_path( __FILE__ ) . '/my-plugin-settings.json',
-	'register_settings' => true,
-	'plugin_file'      => __FILE__,
-	'plugin_version'   => '1.0.0',
-	'views_dir' => plugin_dir_path( __FILE__ ) . '/admin/views'
+    'json_file' => plugin_dir_path( __FILE__ ) . '/my-plugin-settings.json',
+    'register_settings' => true,
+    'plugin_file'      => __FILE__,
+    'plugin_version'   => '1.0.0',
+    'views_dir' => plugin_dir_path( __FILE__ ) . '/admin/views'
 );
 //Create the settings object
 $ds_settings_page = new \Dusty_Sun\WP_Settings_API\v1\DustySun_WP_Settings_API($ds_api_settings);
@@ -36,11 +37,11 @@ if (!class_exists(__NAMESPACE__ . '\Bootstrap')) {
     final class Bootstrap {
         public static function from_plugin(array $args): SettingsBuilder {
             $defaults = [
-            	'json_file'         => null,
-            	'plugin_file'       => null,
-            	'plugin_version'    => null,
-            	'register_settings' => false,
-            	'views_dir'         => null,
+                'json_file'         => null,
+                'plugin_file'       => null,
+                'plugin_version'    => null,
+                'register_settings' => false,
+                'views_dir'         => null,
             ];
             return new SettingsBuilder(array_merge($defaults, $args));
         }
@@ -95,7 +96,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
         private $ds_wp_settings_api_about_sections = array();
 
         private $ds_wp_settings_api_messages = array();
-        
+
         private $views_loaded = false;
 
         // Create the object
@@ -111,13 +112,17 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 
             // Register the settings if true - if we're building an options page
             if ($this->ds_wp_api_settings_init_data['register_settings']) {
-                add_action( 'admin_init', array( $this, 'build_settings' ) );
+                add_action('admin_init', array( $this, 'build_settings' ));
             }
 
-            if ( is_admin() && ! empty($this->ds_wp_api_settings_init_data['register_settings']) ) {
+            if (is_admin() && ! empty($this->ds_wp_api_settings_init_data['register_settings'])) {
                 add_action(
                     'wp_ajax_ds_wp_api_reset_settings-' . $this->main_settings['item_slug'],
                     [$this, 'ds_wp_api_reset_settings']
+                );
+                add_action(
+                    'wp_ajax_ds_wp_api_post_search-' . $this->main_settings['item_slug'],
+                    [$this, 'ajax_post_search']
                 );
             }
         } // end public function __construct()
@@ -128,26 +133,26 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             $views_dir = isset($data['views_dir']) && !empty($data['views_dir']) ? $data['views_dir'] : dirname(__FILE__) . '/views';
 
             $this->ds_wp_api_settings_init_data = array(
-            	'json_file' => $json_file,
-				'plugin_file' => $data['plugin_file'] ?? null,
-				'plugin_version' => $data['plugin_version'] ?? null,
-            	'register_settings' => $register_settings,
-            	'views_dir' => $views_dir
+                'json_file' => $json_file,
+                'plugin_file' => $data['plugin_file'] ?? null,
+                'plugin_version' => $data['plugin_version'] ?? null,
+                'register_settings' => $register_settings,
+                'views_dir' => $views_dir
             );
         } //end read_ds_wp_api_settings_init_data
         public function read_json_file($file_name) {
             if (!$file_name) {
-                //see if there's a json file in the same directory with the same name as this file - only works with plugins 
+                //see if there's a json file in the same directory with the same name as this file - only works with plugins
                 $file_name = plugin_dir_path(__FILE__) . basename(__FILE__, '.php') . '.json';
             } // end if(!$file_name)
 
             //make sure the path we were passed exists
             if (file_exists($file_name)) {
                 ob_start();
-                include( $file_name );
+                include($file_name);
                 $this->ds_wp_settings_api_full_config = json_decode(ob_get_clean(), true);
 
-                // see if there are options fields 
+                // see if there are options fields
                 if (isset($this->ds_wp_settings_api_full_config['options']) && $this->ds_wp_settings_api_full_config['options'] != '') {
                     $this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'];
                     // } if(isset($this->ds_wp_settings_api_full_config['sections']) && $this->ds_wp_settings_api_full_config['sections'] != '') {
@@ -169,18 +174,18 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 return;
             }
             $this->views_loaded = true;
-    
+
             // Get the views
             $this->ds_wp_settings_api_full_config = $this->read_stored_views($this->ds_wp_settings_api_full_config);
-    
+
             // Get the views for main settings screen
             $this->main_settings['info'] = $this->ds_wp_settings_api_full_config['main_settings']['info'];
-    
+
             // Get the views for any option/field tabs
             if (isset($this->ds_wp_settings_api_full_config['options'])) {
                 $this->ds_wp_settings_option_fields = $this->ds_wp_settings_api_full_config['options'];
             }
-    
+
             // Get the views for any about section tabs
             if (isset($this->ds_wp_settings_api_full_config['about_sections']) && $this->ds_wp_settings_api_full_config['about_sections'] != '') {
                 $this->ds_wp_settings_api_about_sections = $this->ds_wp_settings_api_full_config['about_sections'];
@@ -189,28 +194,28 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 
         public function set_main_settings($update_db = false, $reset_defaults = false) {
             // if $update_db is true the main settings key can optionally be stored in
-            // the database. This is useful for recording this info on plugin or theme 
-            // activation. The $reset_defaults flag will clear any existing values from 
+            // the database. This is useful for recording this info on plugin or theme
+            // activation. The $reset_defaults flag will clear any existing values from
             // the database.
 
             $this->main_settings = $this->ds_wp_settings_api_full_config['main_settings'];
 
             // set default options which can be overridden by the JSON file
             $ds_default_main_settings = array(
-            	'text_domain' => 'ds_wp_settings_api',
-            	'tabs' => 'true',
-            	'options_suffix' => '',
-            	'page_suffix' => '_page',
-            	'author' => '',
-            	'author_uri' => '',
-            	'item_name' => 'Untitled',
-            	'item_uri' => '',
-            	'page_hook' => '',
-            	'page_slug' => '',
-            	'item_slug' => '',
-            	'support_uri' => '',
-            	'support_email' => '',
-            	'version' => '',
+                'text_domain' => 'ds_wp_settings_api',
+                'tabs' => 'true',
+                'options_suffix' => '',
+                'page_suffix' => '_page',
+                'author' => '',
+                'author_uri' => '',
+                'item_name' => 'Untitled',
+                'item_uri' => '',
+                'page_hook' => '',
+                'page_slug' => '',
+                'item_slug' => '',
+                'support_uri' => '',
+                'support_email' => '',
+                'version' => '',
             );
 
             // Go through the options that were set in the JSON config file and overwrite
@@ -250,7 +255,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 } // end if
 
                 // Register admin scripts
-                add_action( 'admin_enqueue_scripts', array( $this, 'register_ds_wp_settings_api_admin_styles_scripts' ), 1, 1 );
+                add_action('admin_enqueue_scripts', array( $this, 'register_ds_wp_settings_api_admin_styles_scripts' ), 1, 1);
 
                 // check if the reset_defaults flag was set and clear the existing options if so
                 // set the ds_wp_settings_api_messages value for another function to use
@@ -287,14 +292,14 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 wp_enqueue_style('ds-wp-google-fonts-montserrat', 'https://fonts.googleapis.com/css?family=Montserrat:300,400,600,700');
 
                 // Add the color picker css file
-                wp_enqueue_style( 'wp-color-picker' );
+                wp_enqueue_style('wp-color-picker');
 
                 // Sync this version with the latest supported version for fontawesome-iconpicker
                 wp_register_style('ds-wp-settings-api-fontawesome', 'https://use.fontawesome.com/releases/v5.1.1/css/all.css', '5.1.1');
                 wp_enqueue_style('ds-wp-settings-api-fontawesome');
 
                 // Plugin panel CSS
-                wp_enqueue_style('ds-wp-settings-api', $this->get_file_url('/css/ds-wp-settings-api-admin.css'));
+                wp_enqueue_style('ds-wp-settings-api', $this->get_file_url('/css/ds-wp-settings-api-admin.css'), [], filemtime(dirname(__FILE__) . '/css/ds-wp-settings-api-admin.css'));
 
                 // Font Awesome Picker CSS
                 wp_register_style('ds-wp-settings-api-fontawesome-iconpicker', $this->get_file_url('/css/fontawesome-iconpicker.min.css'));
@@ -305,16 +310,24 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 wp_enqueue_script('ds-wp-settings-api-fontawesome-iconpicker');
 
                 // Load the JS that adds the color picker
-                wp_enqueue_script( 'ds-wp-settings-api-admin', $this->get_file_url( '/js/ds-wp-settings-api-admin.js'), array( 'wp-color-picker' ), false, true );
+                wp_enqueue_script('ds-wp-settings-api-admin', $this->get_file_url('/js/ds-wp-settings-api-admin.js'), array( 'wp-color-picker' ), filemtime(dirname(__FILE__) . '/js/ds-wp-settings-api-admin.js'), true);
 
                 wp_register_style('ds-select2', $this->get_file_url('/lib/select2/select2.min.css'), [], '4.1.0');
                 wp_register_script('ds-select2', $this->get_file_url('/lib/select2/select2.full.min.js'), ['jquery'], '4.1.0', true);
                 wp_enqueue_style('ds-select2');
                 wp_enqueue_script('ds-select2');
+
+                // Pass AJAX data for post_select fields
+                wp_localize_script('ds-wp-settings-api-admin', 'dsWpSettingsApi', [
+                    'ajaxUrl'        => admin_url('admin-ajax.php'),
+                    'postSearchAction' => 'ds_wp_api_post_search-' . $this->main_settings['item_slug'],
+                    'postSearchNonce'  => wp_create_nonce('ds_wp_api_post_search'),
+                ]);
             } // end if($hook == $this->main_settings['page_hook'])
         } // end public function register_ds_ucfml_admin_styles_scripts
-		
+
         private function resolve_host_version(): string {
+
             if (!empty($this->ds_wp_api_settings_init_data['plugin_version'])) {
                 return $this->ds_wp_api_settings_init_data['plugin_version'];
             }
@@ -377,12 +390,72 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             }
 
             $response = array(
-            	'messages' => $response_html,
+                'messages' => $response_html,
             );
             wp_send_json($response);
 
             wp_die();
         } // end function reset_all_settings
+
+        /**
+         * AJAX handler for Select2 post search.
+         * Expects: $_GET['q'] (search term), $_GET['post_type'] (comma-separated),
+         *          $_GET['post_status'], $_GET['page'] (for pagination).
+         */
+        public function ajax_post_search() {
+            check_ajax_referer('ds_wp_api_post_search', '_nonce');
+
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('Unauthorized', 403);
+            }
+
+            $search     = sanitize_text_field(wp_unslash($_GET['q'] ?? ''));
+            $post_types = array_filter(array_map('sanitize_key', explode(',', $_GET['post_type'] ?? 'post')));
+            $status     = sanitize_key($_GET['post_status'] ?? 'publish');
+            $page       = absint($_GET['page'] ?? 1);
+            $per_page   = 20;
+
+            if (empty($post_types)) {
+                $post_types = ['post'];
+            }
+
+            $args = [
+                'post_type'              => $post_types,
+                'post_status'            => $status,
+                'posts_per_page'         => $per_page,
+                'paged'                  => $page,
+                'orderby'                => 'title',
+                'order'                  => 'ASC',
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ];
+
+            // If the search term is numeric, search by post ID as well
+            if (is_numeric($search)) {
+                // Use post__in to find by exact ID, combined with title search
+                $args['post__in'] = [absint($search)];
+                // Don't use 's' with post__in - it's too restrictive
+            } else {
+                $args['s'] = $search;
+            }
+
+            $query   = new \WP_Query($args);
+            $results = [];
+
+            foreach ($query->posts as $p) {
+                $results[] = [
+                    'id'   => $p->ID,
+                    'text' => sprintf('%s (ID: %d)', html_entity_decode(get_the_title($p), ENT_QUOTES, 'UTF-8'), $p->ID),
+                ];
+            }
+
+            $more = ($page * $per_page) < $query->found_posts;
+
+            wp_send_json([
+                'results'    => $results,
+                'pagination' => ['more' => $more],
+            ]);
+        } // end function ajax_post_search
 
         public function get_reset_ajax_form() {
             $reset_html = '<h2>RESET ALL SETTINGS</h2>
@@ -402,8 +475,8 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
         /* Create the actual options page */
         // pass a title, header content and about sections. If you don't, then the header content will be loaded from the "main_settings" key along with the content from any file named main_settings.php that is placed in the views directory
 
-        // if there's a logo_file key specified with a path relative to this library it will be shown in the header bar 
-	
+        // if there's a logo_file key specified with a path relative to this library it will be shown in the header bar
+
         public function build_settings_panel($title = null, $header_content = null) {
             $this->ensure_views_loaded();
 
@@ -413,8 +486,8 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             if ($header_content == null) {
                 $header_content = $this->main_settings['info'];
             }
-            if ( !current_user_can( 'manage_options' ) ) {
-                wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+            if (!current_user_can('manage_options')) {
+                wp_die(__('You do not have sufficient permissions to access this page.'));
             }
             echo settings_errors();
             ?>
@@ -422,12 +495,12 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 			<div class="ds-wp-settings-api-admin-title">
 				<h1><?php echo $title; ?></h1>
 				<?php
-            		// check if the image file is set
-            		if (isset($this->main_settings['logo_file']) && $this->main_settings['logo_file'] != null) {
-            		    ?>
-					<img id="ds-wp-settings-logo" src="<?php echo  plugins_url( $this->main_settings['logo_file'], __FILE__);?>">
+                    // check if the image file is set
+                    if (isset($this->main_settings['logo_file']) && $this->main_settings['logo_file'] != null) {
+                        ?>
+					<img id="ds-wp-settings-logo" src="<?php echo  plugins_url($this->main_settings['logo_file'], __FILE__);?>">
 					<?php
-            		}
+                    }
             ?>
 			</div>
 			<div class="ds-wp-settings-api-inner-wrap">
@@ -440,7 +513,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 				<?php } ?>
 			
 			<?php
-			$this->build_options_form(); ?>
+            $this->build_options_form(); ?>
 			
 			<div class="ds-wp-settings-api-attribution">
 				<span class="ds-wp-settings-api-item-home"><a href="<?php echo $this->main_settings['item_uri'];?>"><?php echo $this->main_settings['name'];?></a></span>
@@ -455,7 +528,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             if ($this->ds_wp_settings_option_fields || $this->ds_wp_settings_api_about_sections) { ?>
 			<div class="ds-wp-settings-api-admin-panel-wrap">
 		<?php
-            	$tabs = $this->main_settings['tabs'];
+                $tabs = $this->main_settings['tabs'];
                 // See if tabs should be created and if so, create them
 
                 if ($tabs == "true") {
@@ -464,7 +537,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 				<h2 class="nav-tab-wrapper" id="panel-nav-tab">
 						<!-- when tab buttons are clicked we jump back to the same page but with a new parameter that represents the clicked tab. accordingly we make it active -->
 						<?php
-                    		$ds_wp_settings_api_section_loop_counter = 1;
+                            $ds_wp_settings_api_section_loop_counter = 1;
 
                     // we check if the page is visited by click on the tabs or on the menu button.
                     // then we get the active tab.
@@ -476,7 +549,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                     // Our tabs can be made up of options or about_sections in the JSON file.
                     // Combine into an array since we have settings or about sections that
                     // can be tabs. Add them to an array and add a key to mark what they are
-						
+
                     if ($this->ds_wp_settings_option_fields) {
                         foreach ($this->ds_wp_settings_option_fields as $option_key => $option_array) {
                             if (isset($option_array['skip']) && ($option_array['skip'] == 'true' || $option_array['skip'] === true)) {
@@ -500,7 +573,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 
                     // loop through the combined array to create tabs
 
-                    // prepare the arrays - if there is no tab order, assign 100 
+                    // prepare the arrays - if there is no tab order, assign 100
                     foreach ($ds_wp_settings_api_tab_array as $ds_wp_settings_api_section_key => $ds_wp_settings_api_section) {
                         $tab_order_counter = 100;
                         if (!array_key_exists('tab_order', $ds_wp_settings_api_section)) {
@@ -522,7 +595,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                         // set the tab title
                         if (isset($ds_wp_settings_api_section['tab_label']) && $ds_wp_settings_api_section['tab_label'] != '') {
                             $tab_label = $ds_wp_settings_api_section['tab_label'];
-                        } else if (isset($ds_wp_settings_api_section['title']) && $ds_wp_settings_api_section['title'] != '') {
+                        } elseif (isset($ds_wp_settings_api_section['title']) && $ds_wp_settings_api_section['title'] != '') {
                             $tab_label = $ds_wp_settings_api_section['title'];
                         } else {
                             $tab_label = 'Option ' . $ds_wp_settings_api_section_loop_counter;
@@ -542,57 +615,57 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 ?>
 				<div class="ds-wp-settings-api-admin-panel">
 					<?php
-                			// check if we have tabs and if not show all sections
-                			if ($tabs == "true") {
-                			    if ($ds_wp_settings_api_tab_array[$active_tab]['type'] == 'option') {
-                			        // do the form  ?>
+                            // check if we have tabs and if not show all sections
+                            if ($tabs == "true") {
+                                if ($ds_wp_settings_api_tab_array[$active_tab]['type'] == 'option') {
+                                    // do the form?>
 
 							<form action="options.php" method="POST" id="<?php echo $active_tab;?>"> <?php
-                			        $current_settings_page = $active_tab . $this->main_settings['page_suffix'];
-                			        settings_fields ( $current_settings_page  );
-                			        do_settings_sections( $current_settings_page );
-                			        submit_button(); ?>
+                                    $current_settings_page = $active_tab . $this->main_settings['page_suffix'];
+                                    settings_fields($current_settings_page);
+                                    do_settings_sections($current_settings_page);
+                                    submit_button(); ?>
 						</form>
 						<?php
-                			    } else {
-                			        // about section so print the info
-                			        $current_about_section = $ds_wp_settings_api_tab_array[$active_tab];
+                                } else {
+                                    // about section so print the info
+                                    $current_about_section = $ds_wp_settings_api_tab_array[$active_tab];
 
-                			        $current_about_section_title = isset($current_about_section['title']) && !empty($current_about_section['title']) ? $current_about_section['title'] : '';
+                                    $current_about_section_title = isset($current_about_section['title']) && !empty($current_about_section['title']) ? $current_about_section['title'] : '';
 
-                			        $current_about_section_info = isset($current_about_section['info']) && !empty($current_about_section['info']) ? $current_about_section['info'] : '';
-                			        echo '<h2>' . $current_about_section_title . '</h2>';
-                			        echo $current_about_section_info;
-                			    } // end if($tabs == "true")
-                			} else {
-                			    // All of our settings are on one page instead of tabs
-                			    // do the form  
-                			    if ($this->ds_wp_settings_option_fields) {?>
+                                    $current_about_section_info = isset($current_about_section['info']) && !empty($current_about_section['info']) ? $current_about_section['info'] : '';
+                                    echo '<h2>' . $current_about_section_title . '</h2>';
+                                    echo $current_about_section_info;
+                                } // end if($tabs == "true")
+                            } else {
+                                // All of our settings are on one page instead of tabs
+                                // do the form
+                                if ($this->ds_wp_settings_option_fields) {?>
 
 						<form action="options.php" method="POST"> <?php
-                			    	settings_fields ( $this->main_settings['text_domain'] );
-                			        // get each option section
-                			        foreach ($this->ds_wp_settings_option_fields as $ds_wp_settings_api_section_key => $ds_wp_settings_api_section) {
-                			            $current_settings_page = $ds_wp_settings_api_section_key . $this->main_settings['page_suffix'];
-                			            do_settings_sections( $current_settings_page );
-                			        } // end foreach
-                			        submit_button(); ?>
+                                    settings_fields($this->main_settings['text_domain']);
+                                    // get each option section
+                                    foreach ($this->ds_wp_settings_option_fields as $ds_wp_settings_api_section_key => $ds_wp_settings_api_section) {
+                                        $current_settings_page = $ds_wp_settings_api_section_key . $this->main_settings['page_suffix'];
+                                        do_settings_sections($current_settings_page);
+                                    } // end foreach
+                                    submit_button(); ?>
 						</form>
 					<?php
-                			    } // end if
+                                } // end if
 
-                			    // get all about sections
-                			    if ($this->ds_wp_settings_api_about_sections) {
-                			        foreach ($this->ds_wp_settings_api_about_sections as $ds_wp_settings_api_about_key => $ds_wp_settings_api_about_section) {
-                			            echo '<h2>' . $ds_wp_settings_api_about_section['title'] . '</h2>';
-                			            echo $ds_wp_settings_api_about_section['info'];
-                			        } // end foreach
-                			    } // end if
-                			} // end if tabs == true
+                                // get all about sections
+                                if ($this->ds_wp_settings_api_about_sections) {
+                                    foreach ($this->ds_wp_settings_api_about_sections as $ds_wp_settings_api_about_key => $ds_wp_settings_api_about_section) {
+                                        echo '<h2>' . $ds_wp_settings_api_about_section['title'] . '</h2>';
+                                        echo $ds_wp_settings_api_about_section['info'];
+                                    } // end foreach
+                                } // end if
+                            } // end if tabs == true
                 ?>
 				</div><!--ds-wp-settings-api-admin-panel-->				
 			</div><!--ds-wp-settings-api-inner-wrap-->
-			<?php 
+			<?php
             } // end if
         } // end function ds_wp_settings_api_menu_options
 
@@ -616,7 +689,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                             if ($ds_default_setting_field['type'] == 'color_picker') {
                                 // set the default color picker to black
                                 $ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = '#000000';
-                            } else if ($ds_default_setting_field['type'] == 'protected') {
+                            } elseif ($ds_default_setting_field['type'] == 'protected') {
                                 $ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = 'protected_must_decrypt';
                             } else {
                                 $ds_wp_settings_values[$ds_settings_option_name][$ds_default_setting_field['id']] = '';
@@ -664,21 +737,21 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                         update_option($ds_wp_setting_key, $ds_wp_setting_value);
                     } // end foreach
                 } // end update_db
-				// return the array
+                // return the array
                 return $ds_wp_settings_values;
             } // end if
         } // end function set_current_settings
 
         public function ds_wp_settings_api_random_string($length = 10) {
-            return substr(str_shuffle(str_repeat($x='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil($length/strlen($x)) )),1,$length);
+            return substr(str_shuffle(str_repeat($x = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil($length / strlen($x)))), 1, $length);
         }
 
-        public function wl ( $log ) {
-            if ( true === WP_DEBUG ) {
-                if ( is_array( $log ) || is_object( $log ) ) {
-                    error_log( print_r( $log, true ) );
+        public function wl($log) {
+            if (true === WP_DEBUG) {
+                if (is_array($log) || is_object($log)) {
+                    error_log(print_r($log, true));
                 } else {
-                    error_log( $log );
+                    error_log($log);
                 }
             }
         } // end write_log
@@ -777,7 +850,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             if (file_exists($view_file)) {
                 try {
                     ob_start();
-                    include( $view_file );
+                    include($view_file);
                     return ob_get_clean();
                 } catch (Exception $e) {
                     $this->wl($e->getMessage());
@@ -819,7 +892,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                     }
 
                     // register the settings
-                    register_setting( $ds_wp_settings_api_option_group, $ds_wp_settings_api_option_name, array($this, 'ds_wp_settings_api_sanitize') );
+                    register_setting($ds_wp_settings_api_option_group, $ds_wp_settings_api_option_name, array($this, 'ds_wp_settings_api_sanitize'));
 
                     // loop through the fields and create settings fields for each
                     foreach ($ds_wp_settings_api_field_setting['fields'] as $ds_wp_settings_api_field_setting) {
@@ -833,9 +906,9 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                             $ds_wp_settings_api_option_page, // Page.  The menu page on which to display this field.
                             $ds_wp_settings_api_setting_id, // The section of the settings page (added via add_settings_section)
                             array(
-                            	'fields' => $ds_wp_settings_api_field_setting,
-                            	'option_name' => $ds_wp_settings_api_option_name,
-                            	'class' => $ds_wp_settings_api_option_class // class for the tr
+                                'fields' => $ds_wp_settings_api_field_setting,
+                                'option_name' => $ds_wp_settings_api_option_name,
+                                'class' => $ds_wp_settings_api_option_class // class for the tr
                             ) // options passed to the callback
                         );
                     } // nested foreach
@@ -868,10 +941,10 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class . '" />';
                 echo settings_errors($settings['id']);
             } // end if($settings['type'] == 'text')
-            else if ($settings['type'] == 'textarea') {
+            elseif ($settings['type'] == 'textarea') {
                 $rows = isset($settings['rows']) ? $settings['rows'] : '8';
                 $value = isset($ds_input_setting_option) ? esc_textarea($ds_input_setting_option) : '';
-    
+
                 echo '<textarea id="' . esc_attr($settings['id']) . '" 
                 name="' . esc_attr($option_name . '[' . $settings['id'] . ']') . '" 
                 class="ds-wp-api-input ' . esc_attr($ds_input_class . ' ' . $option_class) . '" 
@@ -881,10 +954,10 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 
                 // Show the error if any for this ID
                 echo settings_errors($settings['id']);
-            } else if ($settings['type'] == 'multifield_text') {
+            } elseif ($settings['type'] == 'multifield_text') {
                 if (!is_array($ds_input_setting_option)) {
                     $ds_input_setting_option = array( $ds_input_setting_option);
-                } 
+                }
                 echo '<div class="ds-wp-api-expanding-input-fields">';
                 $multifield_text_counter = 0;
                 foreach ($ds_input_setting_option as $option) {
@@ -897,19 +970,19 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo settings_errors($settings['id']);
             } // end if($settings['type'] == 'text')
 
-            else if ($settings['type'] == 'color_picker') {
+            elseif ($settings['type'] == 'color_picker') {
                 echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input cpa-color-picker ' . $ $ds_input_class . ' ' . $option_class .'" />';
 
                 // Show the error if any for this ID
                 echo settings_errors($settings['id']);
             } // end else if($settings['type'] == 'color_picker')
 
-            else if ($settings['type'] == 'fontawesome_picker') {
+            elseif ($settings['type'] == 'fontawesome_picker') {
                 echo '<input type="text" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input fontawesome-picker ' . $ $ds_input_class . ' ' . $option_class .'" />';
                 echo '<span class="input-group-addon iconpicker-component"></span>';
             } // end else if($settings['type'] == 'fontawesome_picker')
 
-            else if ($settings['type'] == 'number') {
+            elseif ($settings['type'] == 'number') {
                 // set the step amount for decimal places
                 $step_amount = isset($settings['step']) && !empty($settings['step']) ? $settings['step'] : '1';
 
@@ -919,32 +992,32 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo settings_errors($settings['id']);
             } // end else if($settings['type'] == 'number')
 
-            else if ($settings['type'] == 'protected') {
+            elseif ($settings['type'] == 'protected') {
                 echo '<input type="password" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class .'" />';
 
                 echo settings_errors($settings['id']);
-            } else if ($settings['type'] == 'password') {
+            } elseif ($settings['type'] == 'password') {
                 echo '<input type="password" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ' . $ds_input_class . ' ' . $option_class .'" />';
 
                 echo settings_errors($settings['id']);
             } // end
-            else if ($settings['type'] == 'hidden') {
+            elseif ($settings['type'] == 'hidden') {
                 echo '<input type="hidden" id="' . $settings['id'] . '" name="' . $option_name . '[' . $settings['id'] . ']" value="'. $ds_input_setting_option . '" class="ds-wp-api-input ds-wp-api-hidden ' . $ds_input_class .'" />';
 
                 // Show the error if any for this ID
                 echo settings_errors($settings['id']);
             } // end else if($settings['type'] == 'color_picker')
 
-            else if ($settings['type'] == 'checkbox') {
+            elseif ($settings['type'] == 'checkbox') {
                 echo '<div class="ds-checkbox">';
                 foreach ($settings['options'] as $option_value => $option_text) {
                     echo '<div class="ds-checkbox-inner">';
                     $checked = ' ';
                     if (is_array($ds_input_setting_option) && in_array($option_value, $ds_input_setting_option)) {
                         $checked = ' checked="checked" ';
-                    } else if ($ds_input_setting_option == $option_value) {
+                    } elseif ($ds_input_setting_option == $option_value) {
                         $checked = ' checked="checked" ';
-                    } else if ($ds_input_setting_option === FALSE && $settings['value'] == $option_value) {
+                    } elseif ($ds_input_setting_option === false && $settings['value'] == $option_value) {
                         $checked = ' checked="checked" ';
                     } else {
                         $checked = ' ';
@@ -956,13 +1029,13 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo '</div>';
             } // else if($settings['type'] == 'checkbox')
 
-            else if ($settings['type'] == 'radio') {
+            elseif ($settings['type'] == 'radio') {
                 echo '<div class="ds-radio">';
                 foreach ($settings['options'] as $option_value => $option_text) {
                     $checked = ' ';
                     if ($ds_input_setting_option == $option_value) {
                         $checked = ' checked="checked" ';
-                    } else if ($ds_input_setting_option === FALSE && $settings['value'] == $option_value) {
+                    } elseif ($ds_input_setting_option === false && $settings['value'] == $option_value) {
                         $checked = ' checked="checked" ';
                     } else {
                         $checked = ' ';
@@ -974,7 +1047,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo '</div>';
             } // else if($settings['type'] == 'radio')
 
-            else if ($settings['type'] == 'radio_on_off') {
+            elseif ($settings['type'] == 'radio_on_off') {
                 // only two options are allowed here
                 $option_counter = 0;
                 echo '<div class="ds-switch">';
@@ -989,26 +1062,26 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                     // if (get_option($settings['id']) == $option_value) {
                     if ($ds_input_setting_option == $option_value) {
                         $checked = ' checked="checked" ';
-                    } else if ($ds_input_setting_option === FALSE && $settings['value'] == $option_value) {
+                    } elseif ($ds_input_setting_option === false && $settings['value'] == $option_value) {
                         $checked = ' checked="checked" ';
                     } else {
                         $checked = ' ';
                     }
                     echo '<input type="radio" class="ds-switch-input ' . $option_class . '" name="' . $option_name . '[' . $settings['id'] . ']" id="' . $settings['id'] . '_' . $option_value . '" value="' . $option_value . '" ' . $checked . '/>';
                     echo '<label class="ds-switch-label ds-switch-label-' . $option_counter . '" for="' . $settings['id'] . '_' . $option_value . '">' . $option_text . '</label>';
-				// } // end for($option_counter = 1; $option_counter <=2; $option_counter++)
+                    // } // end for($option_counter = 1; $option_counter <=2; $option_counter++)
                 }// end foreach ($settings['options'] as $option_value => $option_text)
                 echo '<span class="ds-switch-selection">';
                 echo '</div>';
             } // else if($settings['type'] == 'radio_on_off')
-            else if ($settings['type'] == 'select') {
+            elseif ($settings['type'] == 'select') {
                 echo '<div class="ds-select">';
                 echo '<select name="' . $option_name . '[' . $settings['id'] . ']" id="' . $settings['id'] . '" class="' . $option_class . '">';
                 foreach ($settings['options'] as $option_value => $option_text) {
                     $selected = ' ';
                     if ($ds_input_setting_option == $option_value) {
                         $selected = ' selected ';
-                    } else if ($ds_input_setting_option === FALSE && $settings['default'] == $option_value) {
+                    } elseif ($ds_input_setting_option === false && $settings['default'] == $option_value) {
                         $selected = ' selected ';
                     } else {
                         $selected = ' ';
@@ -1019,36 +1092,62 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 echo '</select>';
                 echo '</div>';
             } // else if($settings['type'] == 'select')
-            else if ($settings['type'] == 'post_select') {
+            elseif ($settings['type'] == 'post_select') {
                 $multiple   = !empty($settings['multiple']);          // optional in JSON
-                $placeholder= $settings['placeholder'] ?? '';
+                $placeholder = $settings['placeholder'] ?? '';
                 $post_types = (array)($settings['post_type'] ?? 'post');
+                $use_ajax   = !empty($settings['ajax']);              // NEW: ajax flag
+                $post_status = $settings['post_status'] ?? 'publish';
 
-                $args = [
-                	'post_type'              => $post_types,
-                	'posts_per_page'         => $settings['posts_per_page'] ?? -1,
-                	'post_status'            => $settings['post_status'] ?? 'publish',
-                	'orderby'                => $settings['orderby'] ?? 'title',
-                	'order'                  => $settings['order']   ?? 'ASC',
-                	'no_found_rows'          => true,
-                	'update_post_meta_cache' => false,
-                	'update_post_term_cache' => false,
-                ];
-                $posts = get_posts($args);
+                // When using AJAX, only load the already-selected posts (not all of them)
+                if ($use_ajax) {
+                    $selected_ids = $multiple ? array_filter(array_map('absint', (array)$ds_input_setting_option)) : array_filter([absint($ds_input_setting_option)]);
+                    $posts = [];
+                    if (!empty($selected_ids)) {
+                        $posts = get_posts([
+                            'post_type'              => $post_types,
+                            'post__in'               => $selected_ids,
+                            'posts_per_page'         => count($selected_ids),
+                            'post_status'            => $post_status,
+                            'orderby'                => 'post__in',
+                            'no_found_rows'          => true,
+                            'update_post_meta_cache' => false,
+                            'update_post_term_cache' => false,
+                        ]);
+                    }
+                } else {
+                    // Original behavior: pre-load all posts
+                    $args = [
+                        'post_type'              => $post_types,
+                        'posts_per_page'         => $settings['posts_per_page'] ?? -1,
+                        'post_status'            => $post_status,
+                        'orderby'                => $settings['orderby'] ?? 'title',
+                        'order'                  => $settings['order']   ?? 'ASC',
+                        'no_found_rows'          => true,
+                        'update_post_meta_cache' => false,
+                        'update_post_term_cache' => false,
+                    ];
+                    $posts = get_posts($args);
+                }
 
                 $name = $option_name.'['.$settings['id'].']'.($multiple ? '[]' : '');
                 $value = $multiple ? (array)$ds_input_setting_option : [$ds_input_setting_option];
 
                 echo '<select '
-                	. 'name="'.esc_attr($name).'" '
-                	. 'id="'.esc_attr($settings['id']).'" '
-                	. ($multiple ? 'multiple size="8" ' : '')
-                	. 'class="ds-post-select '.esc_attr($option_class).(!empty($settings['select2']) ? ' ds-post-select--select2' : '').'" '
-                	. 'data-placeholder="'.esc_attr($placeholder).'">';
+                    . 'name="'.esc_attr($name).'" '
+                    . 'id="'.esc_attr($settings['id']).'" '
+                    . ($multiple ? 'multiple size="8" ' : '')
+                    . 'class="ds-post-select '.esc_attr($option_class)
+                        .(!empty($settings['select2']) ? ' ds-post-select--select2' : '')
+                        .($use_ajax ? ' ds-post-select--ajax' : '').'" '
+                    . 'data-placeholder="'.esc_attr($placeholder).'" '
+                    . ($use_ajax ? 'data-post-type="'.esc_attr(implode(',', $post_types)).'" ' : '')
+                    . ($use_ajax ? 'data-post-status="'.esc_attr($post_status).'" ' : '')
+                    . '>';
 
                 foreach ($posts as $p) {
                     $selected = selected(in_array((int)$p->ID, array_map('intval', $value), true), true, false);
-                    $label = sprintf('%s (ID: %d)', get_the_title($p), $p->ID);
+                    $label = sprintf('%s (ID: %d)', html_entity_decode(get_the_title($p), ENT_QUOTES, 'UTF-8'), $p->ID);
                     echo '<option value="'.esc_attr($p->ID).'" '.$selected.'>'.esc_html($label).'</option>';
                 }
                 echo '</select>';
@@ -1066,11 +1165,11 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             echo '<input type="hidden" name="' . $args['id'] . $this->main_settings['options_suffix'] .  '[ds_wp_settings_api_option_key]" value="'. $args['id'] . '" />';
         } // end function
 
-        function endsWith($needle, $haystack) {
+        public function endsWith($needle, $haystack) {
             return preg_match('/' . preg_quote($needle, '/') . '$/', $haystack);
         }
         // sanitize various types of data
-        public function ds_wp_settings_api_sanitize( $raw_input_data_fields ) {
+        public function ds_wp_settings_api_sanitize($raw_input_data_fields) {
             // sanitized array which will be returned
             $cleaned_input_data = array();
 
@@ -1084,7 +1183,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                 //go through the post values
                 foreach ($_POST as $post_key => $post_value) {
                     //use our function to check if the POST key ends with our option key name and use it if so
-                    $endsWith = $this->endsWith( $this->main_settings['options_suffix'],$post_key);
+                    $endsWith = $this->endsWith($this->main_settings['options_suffix'], $post_key);
 
                     if ($endsWith) {
                         $option_key = isset($_POST[$post_key]['ds_wp_settings_api_option_key']) && !empty($_POST[$post_key]['ds_wp_settings_api_option_key']) ? $_POST[$post_key]['ds_wp_settings_api_option_key'] : '';
@@ -1107,9 +1206,12 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
 
                     if ($validation_type === 'url') {
                         $validated_info = $this->validate_url($raw_input_data_fields[$sanitization_field['id']], $sanitization_field['id'], $sanitization_field['label']);
-                    } else if ($validation_type == "number") {
-                        $validated_info = $this->validate_number($raw_input_data_fields[$sanitization_field['id']],
-                            $sanitization_field['id'], $sanitization_field['label']);
+                    } elseif ($validation_type == "number") {
+                        $validated_info = $this->validate_number(
+                            $raw_input_data_fields[$sanitization_field['id']],
+                            $sanitization_field['id'],
+                            $sanitization_field['label']
+                        );
                     } elseif ($validation_type === 'textarea') {
                         // Preserve line breaks, strip dangerous HTML
                         $raw = $raw_input_data_fields[$sanitization_field['id']] ?? '';
@@ -1131,7 +1233,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                         // check if the encoded string is what's already in the db. if so
                         // don't encrypt it again. Have to get the current settings plus and also
                         // add the options suffix - this is a long and hard to read string
-                        else if ($raw_input_data_fields[$sanitization_field['id']] == $this->current_settings[$option_key . $this->main_settings['options_suffix']][$sanitization_field['id']]) {
+                        elseif ($raw_input_data_fields[$sanitization_field['id']] == $this->current_settings[$option_key . $this->main_settings['options_suffix']][$sanitization_field['id']]) {
                             $validated_info = $raw_input_data_fields[$sanitization_field['id']];
                         } else {
                             // validate the data and encrypt it
@@ -1202,7 +1304,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
         public function validate_array($input, $field_id, $label) {
             if (is_array($input)) {
                 $new_input = array();
-                foreach ($input as $key=>$item) {
+                foreach ($input as $key => $item) {
                     $new_input[$key] = sanitize_text_field($item);
                 }
                 return $new_input;
@@ -1237,19 +1339,19 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
             $muPluginDir = wp_normalize_path(WPMU_PLUGIN_DIR);
             $themeDir = wp_normalize_path(get_theme_root());
 
-            if ( (strpos($absolutePath, $pluginDir) === 0) || (strpos($absolutePath, $muPluginDir) === 0) ) {
+            if ((strpos($absolutePath, $pluginDir) === 0) || (strpos($absolutePath, $muPluginDir) === 0)) {
                 //It's part of a plugin.
                 return plugins_url(basename($absolutePath), $absolutePath);
-            } else if ( strpos($absolutePath, $themeDir) === 0 ) {
+            } elseif (strpos($absolutePath, $themeDir) === 0) {
                 //It's part of a theme.
                 $relativePath = substr($absolutePath, strlen($themeDir) + 1);
                 $template = substr($relativePath, 0, strpos($relativePath, '/'));
                 $baseUrl = get_theme_root_uri($template);
 
-                if ( !empty($baseUrl) && $relativePath ) {
+                if (!empty($baseUrl) && $relativePath) {
                     return $baseUrl . '/' . $relativePath;
                 }
-            } 
+            }
             return '';
         } // end function get_updater_url
 
