@@ -99,6 +99,87 @@ jQuery(function($) {
       var cloned_input = $(this).prev().clone(true, true).insertBefore('.ds-wp-api-expanding-input-fields-add');
       $(cloned_input).find("input").val('');
     });
+
+    ///////////////////////////////////
+    // handle repeater fields
+    ///////////////////////////////////
+
+    $(document).on('click', '.ds-repeater-add-row', function () {
+        var fieldId     = $(this).data('field-id');
+        var $repeater   = $('#' + fieldId + '_repeater');
+        var $template   = $('#' + fieldId + '_template');
+        var optionBase  = $repeater.data('option-base');
+        var newIndex    = $repeater.find('.ds-repeater-row').length;
+
+        // Clone the template row and wire up real input names
+        var $newRow = $template.find('.ds-repeater-row').clone(true, true);
+        $newRow.find('input[data-col-key]').each(function () {
+            var colKey = $(this).data('col-key');
+            $(this).attr('name', optionBase + '[' + newIndex + '][' + colKey + ']');
+            $(this).removeAttr('data-col-key');
+        });
+
+        $repeater.find('tbody').append($newRow);
+    });
+
+    $(document).on('click', '.ds-repeater-remove-row', function () {
+        var $tbody = $(this).closest('tbody');
+        // Refuse to remove the last row — leave a blank row instead
+        if ($tbody.find('.ds-repeater-row').length <= 1) {
+            $(this).closest('.ds-repeater-row').find('input').val('');
+            return;
+        }
+        $(this).closest('.ds-repeater-row').remove();
+
+        // Re-index remaining rows so the name array is sequential on save
+        var $repeater  = $tbody.closest('.ds-repeater');
+        var optionBase = $repeater.data('option-base');
+        $tbody.find('.ds-repeater-row').each(function (i) {
+            $(this).find('input').each(function () {
+                // name format: option_base[field_id][oldIndex][col_key]
+                $(this).attr('name', function (_, oldName) {
+                    return oldName.replace(/\[\d+\]\[/, '[' + i + '][');
+                });
+            });
+        });
+    });
+    $(document).on('click', '.ds-repeater-move-up, .ds-repeater-move-down', function () {
+        var $btn    = $(this);
+        var $row    = $btn.closest('.ds-repeater-row');
+        var $tbody  = $row.closest('tbody');
+        var isUp    = $btn.hasClass('ds-repeater-move-up');
+
+        if (isUp) {
+            var $prev = $row.prev('.ds-repeater-row');
+            if ($prev.length) {
+                $prev.before($row);
+            }
+        } else {
+            var $next = $row.next('.ds-repeater-row');
+            if ($next.length) {
+                $next.after($row);
+            }
+        }
+
+        // Re-index all rows after the move — same logic as remove
+        var $repeater  = $tbody.closest('.ds-repeater');
+        var optionBase = $repeater.data('option-base');
+        $tbody.find('.ds-repeater-row').each(function (i) {
+            $(this).find('input').each(function () {
+                $(this).attr('name', function (_, oldName) {
+                    return oldName.replace(/\[\d+\]\[/, '[' + i + '][');
+                });
+            });
+        });
+
+        // Keep focus on the button after the DOM move
+        $tbody.find('.ds-repeater-row').eq(
+            isUp
+                ? $row.index()
+                : $row.index()
+        ).find($btn.hasClass('ds-repeater-move-up') ? '.ds-repeater-move-up' : '.ds-repeater-move-down')
+         .trigger('focus');
+    });
     
     /* Select2 */
     if ($.fn.select2) {

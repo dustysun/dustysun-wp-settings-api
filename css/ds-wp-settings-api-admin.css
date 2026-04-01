@@ -382,7 +382,19 @@
   font-size: 20px;
   cursor: pointer;
 }
+.ds-wp-settings-api-repeater-row thead th {
+  padding: 10px;
+}
 
+.ds-wp-settings-api-repeater-row tbody .ds-repeater-row td {
+  padding: 5px 10px;
+}
+.ds-wp-settings-api-repeater-row tbody .ds-repeater-row:first-child td {
+  padding-top: 10px;
+}
+.ds-wp-settings-api-repeater-row tbody .ds-repeater-row:last-child td {
+  padding-bottom: 10px;
+}
 /* SELECT2 */
 .select2-container--default .select2-selection--multiple .select2-selection__choice {
   margin-bottom: 0;

@@ -1,6 +1,6 @@
 <?php
 // GitHub: https://github.com/srtalley/dustysun-wp-settings-api
-// Version 2.3.1
+// Version 2.4
 // Author: Steve Talley
 // Organization: Dusty Sun
 // Author URL: https://dustysun.com/
@@ -11,7 +11,7 @@
 // Include the admin panel page
 // https://github.com/kmhcreative/icon-picker
 
-namespace DustySun\WP_Settings_API\v2_3;
+namespace DustySun\WP_Settings_API\v2_4;
 
 /* To use this library, create a new class object and pass the complete path and name of a JSON file, or place a JSON file named ds_wp_settings_api.json in the same directory as this file.
 
@@ -1115,6 +1115,7 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                             'update_post_term_cache' => false,
                         ]);
                     }
+
                 } else {
                     // Original behavior: pre-load all posts
                     $args = [
@@ -1151,6 +1152,100 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                     echo '<option value="'.esc_attr($p->ID).'" '.$selected.'>'.esc_html($label).'</option>';
                 }
                 echo '</select>';
+            } elseif ($settings['type'] === 'repeater') {
+                $columns = $settings['columns'] ?? [];
+                $rows    = is_array($ds_input_setting_option) ? $ds_input_setting_option : [];
+
+                // Always show at least one empty row so the table isn't blank on first load
+                if (empty($rows)) {
+                    $empty_row = [];
+                    foreach ($columns as $col) {
+                        $empty_row[$col['key']] = '';
+                    }
+                    $rows[] = $empty_row;
+                }
+
+                $field_id    = esc_attr($settings['id']);
+                $option_base = esc_attr($option_name) . '[' . $field_id . ']';
+                ?>
+                    <table class="ds-repeater widefat" id="<?php echo $field_id; ?>_repeater"
+                        data-field-id="<?php echo $field_id; ?>"
+                        data-option-base="<?php echo esc_attr($option_name . '[' . $settings['id'] . ']'); ?>">
+                        <thead>
+                            <tr>
+                                <?php foreach ($columns as $col) : ?>
+                                    <th><?php echo esc_html($col['label']); ?></th>
+                                <?php endforeach; ?>
+                                <th class="ds-repeater-col-actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($rows as $i => $row) : ?>
+                                <tr class="ds-repeater-row">
+                                    <?php foreach ($columns as $col) :
+                                        $col_key  = esc_attr($col['key']);
+                                        $col_type = $col['type'] ?? 'text';
+                                        $val      = isset($row[$col['key']]) ? esc_attr($row[$col['key']]) : '';
+                                        $name     = $option_base . '[' . $i . '][' . $col_key . ']';
+                                        ?>
+                                        <td>
+                                            <input type="<?php echo $col_type === 'number' ? 'number' : 'text'; ?>"
+                                                name="<?php echo esc_attr($name); ?>"
+                                                value="<?php echo $val; ?>"
+                                                class="ds-repeater-input"
+                                                placeholder="<?php echo esc_attr($col['placeholder'] ?? ''); ?>" />
+                                        </td>
+                                    <?php endforeach; ?>
+                                    <td class="ds-repeater-col-actions">
+                                        <button type="button" class="button ds-repeater-move-up"
+                                                aria-label="<?php esc_attr_e('Move row up'); ?>">&#x2191;</button>
+                                        <button type="button" class="button ds-repeater-move-down"
+                                                aria-label="<?php esc_attr_e('Move row down'); ?>">&#x2193;</button>
+                                        <button type="button" class="button ds-repeater-remove-row"
+                                                aria-label="<?php esc_attr_e('Remove row'); ?>">&#x2715;</button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="<?php echo count($columns) + 1; ?>">
+                                    <button type="button" class="button ds-repeater-add-row"
+                                            data-field-id="<?php echo $field_id; ?>">
+                                        + Add Row
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <?php
+                    // Hidden template row — cloned by JS, never submitted (inputs have no name until cloned)
+                ?>
+                    <table class="ds-repeater-template" id="<?php echo $field_id; ?>_template"
+                        data-field-id="<?php echo $field_id; ?>"
+                        style="display:none;" aria-hidden="true">
+                        <tbody>
+                            <tr class="ds-repeater-row">
+                                <?php foreach ($columns as $col) :
+                                    $col_type = $col['type'] ?? 'text';
+                                    ?>
+                                    <td>
+                                        <input type="<?php echo $col_type === 'number' ? 'number' : 'text'; ?>"
+                                            data-col-key="<?php echo esc_attr($col['key']); ?>"
+                                            value=""
+                                            class="ds-repeater-input"
+                                            placeholder="<?php echo esc_attr($col['placeholder'] ?? ''); ?>" />
+                                    </td>
+                                <?php endforeach; ?>
+                                <td class="ds-repeater-col-actions">
+                                    <button type="button" class="button ds-repeater-remove-row"
+                                            aria-label="<?php esc_attr_e('Remove row'); ?>">&#x2715;</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <?php
+                    echo settings_errors($settings['id']);
             }
         }// end public function ds_wp_settings_api_create_settings_field_callback
 
@@ -1246,6 +1341,44 @@ if (!class_exists(__NAMESPACE__ . '\SettingsBuilder')) {
                         } else {
                             $validated_info = absint($raw);
                         }
+                    } elseif ($validation_type === 'repeater') {
+                        $raw_rows = $raw_input_data_fields[$sanitization_field['id']] ?? [];
+                        $columns  = $sanitization_field['columns'] ?? [];
+                        $cleaned_rows = [];
+
+                        if (is_array($raw_rows)) {
+                            foreach ($raw_rows as $row) {
+                                if (!is_array($row)) {
+                                    continue;
+                                }
+                                $cleaned_row  = [];
+                                $all_empty    = true;
+
+                                foreach ($columns as $col) {
+                                    $key   = $col['key'];
+                                    $type  = $col['type'] ?? 'text';
+                                    $value = $row[$key] ?? '';
+
+                                    if ($type === 'number') {
+                                        $value = $value !== '' ? absint($value) : '';
+                                    } else {
+                                        $value = sanitize_text_field($value);
+                                    }
+
+                                    if ($value !== '' && $value !== 0) {
+                                        $all_empty = false;
+                                    }
+                                    $cleaned_row[$key] = $value;
+                                }
+
+                                // Skip rows where every column is empty — avoids saving blank trailing rows
+                                if (!$all_empty) {
+                                    $cleaned_rows[] = $cleaned_row;
+                                }
+                            }
+                        }
+
+                        $validated_info = $cleaned_rows;
                     } else {
                         $validated_info = $this->validate_text($raw_input_data_fields[$sanitization_field['id']]);
                     }

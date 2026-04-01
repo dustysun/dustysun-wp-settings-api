@@ -1,10 +1,10 @@
-# Dusty Sun WP Settings API (v2.3)
+# Dusty Sun WP Settings API (v2.4)
 
 A small, JSON-driven helper for building WordPress settings pages quickly. Register sections/fields, render a complete tabbed admin panel, or just output fields inside your own markup.
 
-**Namespace:** `DustySun\WP_Settings_API\v2_3`  
+**Namespace:** `DustySun\WP_Settings_API\v2_4`  
 **Primary class:** `SettingsBuilder`  
-**Current file version:** `2.3.1`
+**Current file version:** `2.4`
 
 ---
 
@@ -51,7 +51,7 @@ require_once plugin_dir_path(__FILE__) . 'lib/dustysun-wp-settings-api/ds_wp_set
 ### Instantiate for runtime (no admin UI)
 
 ```php
-use DustySun\WP_Settings_API\v2_3 as DSWP;
+use DustySun\WP_Settings_API\v2_4 as DSWP;
 
 $settings = new DSWP\SettingsBuilder([
   'json_file'        => plugin_dir_path(__FILE__) . 'my-plugin-settings.json',
@@ -320,6 +320,12 @@ This endpoint accepts the following parameters (via GET): `q` (search term), `po
 ---
 
 ## Changelog
+
+### 2.4 [2026-04-01]
+* Added `repeater` field type: renders an editable table with add, remove, and up/down reorder controls. Columns defined in JSON with `key`, `label`, `type`, and optional `placeholder`. Stored as a sequential array of associative arrays, readable via `Options::get()` like any other field.
+* Repeater sanitizer strips empty rows and sanitizes each column value by declared type (`number` → `absint`, `text` → `sanitize_text_field`).
+* Fixed `post_select` field type: repeater block was incorrectly nested inside the `if ($use_ajax)` branch instead of as a sibling `elseif`, causing the repeater to never render.
+* Updated to version 2.4.
 
 ### 2.3.1 - 2026-02-17
 * **AJAX-powered post_select**: Added `ajax: true` option for `post_select` fields. When enabled, posts are searched on demand via a nonce-protected AJAX endpoint instead of pre-loading all posts on page render. Supports searching by post title or post ID, with paginated results (20 per request).
